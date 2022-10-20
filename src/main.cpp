@@ -1775,7 +1775,7 @@ doc["enginecoolanttemp"] = 0;
 doc["shorttermfueltrimbank_1"] = 0;
 doc["longtermfueltrimbank_1"] = 0;
 doc["shorttermfueltrimbank_2"] = 0;
-// doc["longtermfueltrimbank_2"] = 0;
+doc["longtermfueltrimbank_2"] = 0;
 
 
 char jsonBuffer[512];
