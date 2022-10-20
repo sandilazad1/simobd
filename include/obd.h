@@ -86,6 +86,6 @@ typedef enum
     AUXSUPPORTEDF,
 } obd_pid_states;
 
-void obdSetup();
-boolean obdLoop();
+
+
 

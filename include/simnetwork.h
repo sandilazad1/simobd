@@ -1,2 +1,0 @@
-void simloop();
-void simsetup();
