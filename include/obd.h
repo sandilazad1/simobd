@@ -1,8 +1,8 @@
-#include "ELMduino.h"
-#define ELM_PORT Serial2
-const bool DEBUG = true;
-const int TIMEOUT = 2000;
-const bool HALT_ON_FAIL = false;
+// #include "ELMduino.h"
+// #define ELM_PORT Serial2
+// const bool DEBUG = true;
+// const int TIMEOUT = 2000;
+// const bool HALT_ON_FAIL = false;
 
 
 

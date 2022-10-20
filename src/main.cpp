@@ -7,7 +7,7 @@ const char simPIN[] = "";
 // const char resource[] = "/post-data.php";         // resource path, for example: /post-data.php
 // const int  port = 80;                             // server port number
 
-#define GSMRST  15
+#define GSMRST 15
 #define MYPORT_TX 23
 #define MYPORT_RX 22
 
@@ -16,8 +16,6 @@ const char simPIN[] = "";
 
 #define SerialMon Serial
 #define SerialAT Serial1
-
-SoftwareSerial obdSerial;
 
 #define TINY_GSM_MODEM_SIM800   // Modem is SIM800
 #define TINY_GSM_RX_BUFFER 1024 // Set RX buffer to 1Kb
@@ -31,6 +29,8 @@ const char *obdtopicSend = "obd/866262037106043";
 #include <ArduinoJson.h>
 #include "obd.h"
 #include <SoftwareSerial.h>
+
+#include "ELMduino.h"
 
 int lastReconnectAttempt = 0;
 float h = 5.6;
@@ -116,6 +116,13 @@ TinyGsm modem(SerialAT);
 
 TinyGsmClient client(modem);
 PubSubClient mqtt(client);
+
+const bool DEBUG = true;
+const int TIMEOUT = 2000;
+const bool HALT_ON_FAIL = false;
+
+SoftwareSerial obdSerial;
+
 ELM327 myELM327;
 
 void messageHandler(char *topic, byte *payload, unsigned int length)
@@ -501,11 +508,9 @@ boolean obdLoop()
     }
 
     break;
+  }
 
-
-} 
-
-  //########################################THROTTLE###########################
+    //########################################THROTTLE###########################
 
   case THROTTLE:
   {
@@ -524,10 +529,8 @@ boolean obdLoop()
     }
 
     break;
-  
-  
-  
-  //########################################UCOMMANDEDSECAIRSTATUS###########################
+
+    //########################################UCOMMANDEDSECAIRSTATUS###########################
 
   case UCOMMANDEDSECAIRSTATUS:
   {
@@ -717,11 +720,11 @@ boolean obdLoop()
     }
 
     break;
-  } 
+  }
 
-  //########################################COMMANDEDEGR###########################
+    //########################################COMMANDEDEGR###########################
 
-    case COMMANDEDEGR:
+  case COMMANDEDEGR:
   {
     commandedegr = myELM327.commandedEGR();
 
@@ -739,10 +742,8 @@ boolean obdLoop()
 
     break;
   }
-  
-  
-  
-  //########################################EGRERROR###########################
+
+    //########################################EGRERROR###########################
 
   case EGRERROR:
   {
@@ -856,9 +857,9 @@ boolean obdLoop()
     }
 
     break;
-  } 
+  }
 
-  //########################################UABSBAROPRESSURE###########################
+    //########################################UABSBAROPRESSURE###########################
 
   case UABSBAROPRESSURE:
   {
@@ -878,9 +879,8 @@ boolean obdLoop()
 
     break;
   }
-  
-  
-  //########################################CATTEMPB1S1###########################
+
+    //########################################CATTEMPB1S1###########################
 
   case CATTEMPB1S1:
   {
@@ -956,11 +956,11 @@ boolean obdLoop()
     }
 
     break;
-  } 
+  }
 
-  //########################################SUPPORTEDPIDS_41_60###########################
+    //########################################SUPPORTEDPIDS_41_60###########################
 
-    case SUPPORTEDPIDS_41_60:
+  case SUPPORTEDPIDS_41_60:
   {
     supportedpids_41_60 = myELM327.supportedPIDs_41_60();
 
@@ -977,11 +977,9 @@ boolean obdLoop()
     }
 
     break;
-  } 
-  
-  
+  }
 
-  //########################################MONITORDRIVECYCLESTATUS###########################
+    //########################################MONITORDRIVECYCLESTATUS###########################
 
   case MONITORDRIVECYCLESTATUS:
   {
@@ -1417,11 +1415,11 @@ boolean obdLoop()
     }
 
     break;
-  } 
+  }
 
-      //########################################UABSBAROPRESSURE###########################
+    //########################################UABSBAROPRESSURE###########################
 
-   case FUELINJECTTIMING:
+  case FUELINJECTTIMING:
   {
     fuelinjecttiming = myELM327.fuelInjectTiming();
 
@@ -1439,11 +1437,8 @@ boolean obdLoop()
 
     break;
   }
-  
-  
-  
-  
-  //########################################FUELRATE###########################
+
+    //########################################FUELRATE###########################
 
   case FUELRATE:
   {
@@ -1576,10 +1571,7 @@ boolean obdLoop()
 
     break;
   }
-
-
   }
-
   }
 
   return 0;
@@ -1598,15 +1590,14 @@ boolean connectAWS()
 
   // Create a message handler
 
-
-
-    // Connect to MQTT Broker
+  // Connect to MQTT Broker
   boolean status = mqtt.connect("01");
 
   // Or, if you want to authenticate MQTT:
   // boolean status = mqtt.connect("GsmClientName", "mqtt_user", "mqtt_pass");
 
-  if (status == false) {
+  if (status == false)
+  {
     SerialMon.println(" fail");
     return false;
   }
@@ -1619,9 +1610,23 @@ boolean connectAWS()
 
 void publishMessage()
 {
+
+  uint32_t supportedpids_1_20 = 0;
+  uint32_t monitorstatus = 0;
+  uint16_t freezedtc = 0;
+  uint16_t fuelsystemstatus = 0;
+  float engineload = 0.0;
+  float enginecoolanttemp = 0.0;
+  float shorttermfueltrimbank_1 = 0.0;
   StaticJsonDocument<200> doc;
   doc["humidity"] = h;
-  doc["temperature"] = t;
+  doc["freezedtc"] = freezedtc;
+  doc["supportedpids_1_20"] = supportedpids_1_20;
+  doc["monitorstatus"] = monitorstatus;
+  doc["fuelsystemstatus"] = fuelsystemstatus;
+  doc["engineload"] = engineload;
+  doc["enginecoolanttemp"] = enginecoolanttemp;
+  doc["shorttermfueltrimbank_1"] = shorttermfueltrimbank_1;
   char jsonBuffer[512];
   serializeJson(doc, jsonBuffer); // print to client
 
@@ -1630,11 +1635,152 @@ void publishMessage()
 
 void obdpublishMessage()
 {
-  StaticJsonDocument<200> doc;
-  doc["humidity"] = h;
-  doc["temperature"] = t;
-  char jsonBuffer[512];
-  serializeJson(doc, jsonBuffer); // print to client
+// StaticJsonDocument<1536> doc;
+
+// doc["batteryvoltage"] = 0;
+// doc["get_vin_blocking"] = 0;
+// doc["usupportedpids_1_20"] = 0;
+// doc["umonitorstatus"] = 0;
+// doc["freezedtc"] = 0;
+// doc["fuelsystemstatus"] = 0;
+// doc["engineload"] = 0;
+// doc["enginecoolanttemp"] = 0;
+// doc["shorttermfueltrimbank_1"] = 0;
+// doc["longtermfueltrimbank_1"] = 0;
+// doc["shorttermfueltrimbank_2"] = 0;
+// doc["longtermfueltrimbank_2"] = 0;
+// doc["fuelpressure"] = 0;
+// doc["umanifoldpressure"] = 0;
+// doc["rpm"] = 0;
+// doc["kph"] = 0;
+// doc["mph"] = 0;
+// doc["timingadvance"] = 0;
+// doc["intakeairtemp"] = 0;
+// doc["mafrate"] = 0;
+// doc["throttle"] = 0;
+// doc["ucommandedsecairstatus"] = 0;
+// doc["uoxygensensorspresent_2banks"] = 0;
+// doc["uobdstandards"] = 0;
+// doc["uoxygensensorspresent_4banks"] = 0;
+// doc["auxinputstatus"] = false;
+// doc["runtime"] = 0;
+// doc["usupportedpids_21_40"] = 0;
+// doc["disttravelwithmil"] = 0;
+// doc["fuelrailpressure"] = 0;
+// doc["fuelrailguagepressure"] = 0;
+// doc["commandedegr"] = 0;
+// doc["egrerror"] = 0;
+// doc["commandedevappurge"] = 0;
+// doc["fuellevel"] = 0;
+// doc["uwarmupssincecodescleared"] = 0;
+// doc["distsincecodescleared"] = 0;
+// doc["evapsysvappressure"] = 0;
+// doc["uabsbaropressure"] = 0;
+// doc["cattempb1s1"] = 0;
+// doc["cattempb2s1"] = 0;
+// doc["cattempb1s2"] = 0;
+// doc["cattempb2s2"] = 0;
+// doc["usupportedpids_41_60"] = 0;
+// doc["umonitordrivecyclestatus"] = 0;
+// doc["ctrlmodvoltage"] = 0;
+// doc["absload"] = 0;
+// doc["commandedairfuelratio"] = 0;
+// doc["relativethrottle"] = 0;
+// doc["ambientairtemp"] = 0;
+// doc["absthrottleposb"] = 0;
+// doc["absthrottleposc"] = 0;
+// doc["absthrottleposd"] = 0;
+// doc["absthrottlepose"] = 0;
+// doc["absthrottleposf"] = 0;
+// doc["commandedthrottleactuator"] = 0;
+// doc["timerunwithmil"] = 0;
+// doc["timesincecodescleared"] = 0;
+// doc["maxmafrate"] = 0;
+// doc["ufueltype"] = 0;
+// doc["ethonolpercent"] = 0;
+// doc["absevapsysvappressure"] = 0;
+// doc["evapsysvappressure2"] = 0;
+// doc["absfuelrailpressure"] = 0;
+// doc["relativepedalpos"] = 0;
+// doc["hybridbatlife"] = 0;
+// doc["oiltemp"] = 0;
+// doc["fuelinjecttiming"] = 0;
+// doc["fuelrate"] = 0;
+// doc["uemissionrqmts"] = 0;
+// doc["usupportedpids_61_80"] = 0;
+// doc["demandedtorque"] = 0;
+// doc["torque"] = 0;
+// doc["referencetorque"] = 0;
+// doc["auxsupported"] = 0;
+//char jsonBuffer[2700];
+//serializeJson(doc, jsonBuffer);
+// StaticJsonDocument<512> doc;
+
+// doc["batteryvoltage"] = 0;
+// doc["get_vin_blocking"] = 0;
+// doc["usupportedpids_1_20"] = 0;
+// doc["umonitorstatus"] = 0;
+// doc["freezedtc"] = 0;
+// doc["fuelsystemstatus"] = 0;
+// doc["engineload"] = 0;
+// doc["enginecoolanttemp"] = 0;
+// doc["shorttermfueltrimbank_1"] = 0;
+// doc["longtermfueltrimbank_1"] = 0;
+// doc["shorttermfueltrimbank_2"] = 0;
+// doc["longtermfueltrimbank_2"] = 0;
+// doc["fuelpressure"] = 0;
+// doc["umanifoldpressure"] = 0;
+// doc["rpm"] = 0;
+// doc["kph"] = 0;
+// doc["mph"] = 0;
+// doc["timingadvance"] = 0;
+// doc["intakeairtemp"] = 0;
+// doc["mafrate"] = 0;
+// doc["throttle"] = 0;
+// doc["ucommandedsecairstatus"] = 0;
+// doc["uoxygensensorspresent_2banks"] = 0;
+// doc["uobdstandards"] = 0;
+// doc["uoxygensensorspresent_4banks"] = 0;
+// doc["auxinputstatus"] = false;
+// doc["runtime"] = 0;
+
+StaticJsonDocument<224> doc;
+
+// doc["batteryvoltage"] = 0;
+// doc["get_vin_blocking"] = 0;
+// doc["usupportedpids_1_20"] = 0;
+// doc["umonitorstatus"] = 0;
+// doc["freezedtc"] = 0;
+// doc["fuelsystemstatus"] = 0;
+// doc["engineload"] = 0;
+// doc["enginecoolanttemp"] = 0;
+// doc["shorttermfueltrimbank_1"] = 0;
+// doc["longtermfueltrimbank_1"] = 0;
+// doc["shorttermfueltrimbank_2"] = 0;
+// doc["longtermfueltrimbank_2"] = 0;
+// doc["fuelpressure"] = 0;
+// doc["umanifoldpressure"] = 0;
+// doc["rpm"] = 0;
+// doc["kph"] = 0;
+// doc["mph"] = 0;
+
+doc["batteryvoltage"] = 0;
+doc["get_vin_blocking"] = 0;
+doc["usupportedpids_1_20"] = 0;
+doc["umonitorstatus"] = 0;
+doc["freezedtc"] = 0;
+doc["fuelsystemstatus"] = 0;
+doc["engineload"] = 0;
+doc["enginecoolanttemp"] = 0;
+doc["shorttermfueltrimbank_1"] = 0;
+doc["longtermfueltrimbank_1"] = 0;
+doc["shorttermfueltrimbank_2"] = 0;
+// doc["longtermfueltrimbank_2"] = 0;
+
+
+char jsonBuffer[512];
+
+serializeJson(doc, jsonBuffer);
 
   mqtt.publish(obdtopicSend, jsonBuffer);
 }
@@ -1642,14 +1788,14 @@ void obdpublishMessage()
 void setup()
 {
   pinMode(GSMRST, OUTPUT);
-  digitalWrite(GSMRST,1);
+  digitalWrite(GSMRST, 1);
   SerialMon.begin(9600);
   Serial.begin(9600);
-  ELM_PORT.begin(38400);
+  obdSerial.begin(38400, SWSERIAL_8N1, MYPORT_RX, MYPORT_TX, false);
 
   Serial.println("Attempting to connect to ELM327...");
 
-  if (!myELM327.begin(ELM_PORT, DEBUG, TIMEOUT))
+  if (!myELM327.begin(obdSerial, DEBUG, TIMEOUT))
   {
     Serial.println("Couldn't connect to OBD scanner");
 
@@ -1658,7 +1804,8 @@ void setup()
         ;
   }
 
-  Serial.println("Connected to ELM327");  SerialMon.println("Wait...");
+  Serial.println("Connected to ELM327");
+  SerialMon.println("Wait...");
 
   // Set GSM module baud rate
   TinyGsmAutoBaud(SerialAT, GSM_AUTOBAUD_MIN, GSM_AUTOBAUD_MAX);
@@ -1666,10 +1813,10 @@ void setup()
   delay(6000);
 
   SerialMon.println("Initializing modem...");
-      digitalWrite(GSMRST,0);
-      delay(100);
-      digitalWrite(GSMRST,1);
-      delay(5000);
+  digitalWrite(GSMRST, 0);
+  delay(100);
+  digitalWrite(GSMRST, 1);
+  delay(5000);
 
   //  modem.init();
 
@@ -1716,6 +1863,7 @@ void setup()
 
   mqtt.setServer(broker, 1883);
   mqtt.setCallback(messageHandler);
+  mqtt.setBufferSize(512);
 }
 
 void loop()
@@ -1724,12 +1872,12 @@ void loop()
   t = 90.0;
 
   if (!modem.isNetworkConnected())
-  { 
+  {
 
-      digitalWrite(GSMRST,0);
-      delay(100);
-      digitalWrite(GSMRST,1);
-      delay(100);
+    digitalWrite(GSMRST, 0);
+    delay(100);
+    digitalWrite(GSMRST, 1);
+    delay(100);
 
     SerialMon.println("Network disconnected");
     if (!modem.waitForNetwork(60000L, true))
@@ -1762,7 +1910,6 @@ void loop()
     }
   }
 
-
   if (isnan(h) || isnan(t)) // Check if any reads failed and exit early (to try again).
   {
     Serial.println(F("Failed to read from DHT sensor!"));
@@ -1770,9 +1917,10 @@ void loop()
   }
 
   obdFunCall();
-  publishMessage();
+  //publishMessage();
+  obdpublishMessage();
   delay(100);
-    if (!mqtt.connected())
+  if (!mqtt.connected())
   {
     SerialMon.println("=== MQTT NOT CONNECTED ===");
     // Reconnect every 10 seconds
@@ -1787,8 +1935,10 @@ void loop()
     }
     delay(1000);
     return;
-  }else {
-     mqtt.loop();
+  }
+  else
+  {
+    mqtt.loop();
   }
   // mqtt.loop();
 }
