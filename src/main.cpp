@@ -20,7 +20,7 @@ const char simPIN[] = "";
 #define TINY_GSM_MODEM_SIM800   // Modem is SIM800
 #define TINY_GSM_RX_BUFFER 1024 // Set RX buffer to 1Kb
 
-const char *broker = "54.86.172.160";
+const char *broker = "184.72.193.102";
 const char *obdtopicSend = "obd/866262037106043";
 
 #include <Wire.h>
@@ -1635,153 +1635,85 @@ void publishMessage()
 
 void obdpublishMessage()
 {
-// StaticJsonDocument<1536> doc;
+  StaticJsonDocument<1500> doc;
 
-// doc["batteryvoltage"] = 0;
-// doc["get_vin_blocking"] = 0;
-// doc["usupportedpids_1_20"] = 0;
-// doc["umonitorstatus"] = 0;
-// doc["freezedtc"] = 0;
-// doc["fuelsystemstatus"] = 0;
-// doc["engineload"] = 0;
-// doc["enginecoolanttemp"] = 0;
-// doc["shorttermfueltrimbank_1"] = 0;
-// doc["longtermfueltrimbank_1"] = 0;
-// doc["shorttermfueltrimbank_2"] = 0;
-// doc["longtermfueltrimbank_2"] = 0;
-// doc["fuelpressure"] = 0;
-// doc["umanifoldpressure"] = 0;
-// doc["rpm"] = 0;
-// doc["kph"] = 0;
-// doc["mph"] = 0;
-// doc["timingadvance"] = 0;
-// doc["intakeairtemp"] = 0;
-// doc["mafrate"] = 0;
-// doc["throttle"] = 0;
-// doc["ucommandedsecairstatus"] = 0;
-// doc["uoxygensensorspresent_2banks"] = 0;
-// doc["uobdstandards"] = 0;
-// doc["uoxygensensorspresent_4banks"] = 0;
-// doc["auxinputstatus"] = false;
-// doc["runtime"] = 0;
-// doc["usupportedpids_21_40"] = 0;
-// doc["disttravelwithmil"] = 0;
-// doc["fuelrailpressure"] = 0;
-// doc["fuelrailguagepressure"] = 0;
-// doc["commandedegr"] = 0;
-// doc["egrerror"] = 0;
-// doc["commandedevappurge"] = 0;
-// doc["fuellevel"] = 0;
-// doc["uwarmupssincecodescleared"] = 0;
-// doc["distsincecodescleared"] = 0;
-// doc["evapsysvappressure"] = 0;
-// doc["uabsbaropressure"] = 0;
-// doc["cattempb1s1"] = 0;
-// doc["cattempb2s1"] = 0;
-// doc["cattempb1s2"] = 0;
-// doc["cattempb2s2"] = 0;
-// doc["usupportedpids_41_60"] = 0;
-// doc["umonitordrivecyclestatus"] = 0;
-// doc["ctrlmodvoltage"] = 0;
-// doc["absload"] = 0;
-// doc["commandedairfuelratio"] = 0;
-// doc["relativethrottle"] = 0;
-// doc["ambientairtemp"] = 0;
-// doc["absthrottleposb"] = 0;
-// doc["absthrottleposc"] = 0;
-// doc["absthrottleposd"] = 0;
-// doc["absthrottlepose"] = 0;
-// doc["absthrottleposf"] = 0;
-// doc["commandedthrottleactuator"] = 0;
-// doc["timerunwithmil"] = 0;
-// doc["timesincecodescleared"] = 0;
-// doc["maxmafrate"] = 0;
-// doc["ufueltype"] = 0;
-// doc["ethonolpercent"] = 0;
-// doc["absevapsysvappressure"] = 0;
-// doc["evapsysvappressure2"] = 0;
-// doc["absfuelrailpressure"] = 0;
-// doc["relativepedalpos"] = 0;
-// doc["hybridbatlife"] = 0;
-// doc["oiltemp"] = 0;
-// doc["fuelinjecttiming"] = 0;
-// doc["fuelrate"] = 0;
-// doc["uemissionrqmts"] = 0;
-// doc["usupportedpids_61_80"] = 0;
-// doc["demandedtorque"] = 0;
-// doc["torque"] = 0;
-// doc["referencetorque"] = 0;
-// doc["auxsupported"] = 0;
-//char jsonBuffer[2700];
-//serializeJson(doc, jsonBuffer);
-// StaticJsonDocument<512> doc;
-
-// doc["batteryvoltage"] = 0;
-// doc["get_vin_blocking"] = 0;
-// doc["usupportedpids_1_20"] = 0;
-// doc["umonitorstatus"] = 0;
-// doc["freezedtc"] = 0;
-// doc["fuelsystemstatus"] = 0;
-// doc["engineload"] = 0;
-// doc["enginecoolanttemp"] = 0;
-// doc["shorttermfueltrimbank_1"] = 0;
-// doc["longtermfueltrimbank_1"] = 0;
-// doc["shorttermfueltrimbank_2"] = 0;
-// doc["longtermfueltrimbank_2"] = 0;
-// doc["fuelpressure"] = 0;
-// doc["umanifoldpressure"] = 0;
-// doc["rpm"] = 0;
-// doc["kph"] = 0;
-// doc["mph"] = 0;
-// doc["timingadvance"] = 0;
-// doc["intakeairtemp"] = 0;
-// doc["mafrate"] = 0;
-// doc["throttle"] = 0;
-// doc["ucommandedsecairstatus"] = 0;
-// doc["uoxygensensorspresent_2banks"] = 0;
-// doc["uobdstandards"] = 0;
-// doc["uoxygensensorspresent_4banks"] = 0;
-// doc["auxinputstatus"] = false;
-// doc["runtime"] = 0;
-
-StaticJsonDocument<224> doc;
-
-// doc["batteryvoltage"] = 0;
-// doc["get_vin_blocking"] = 0;
-// doc["usupportedpids_1_20"] = 0;
-// doc["umonitorstatus"] = 0;
-// doc["freezedtc"] = 0;
-// doc["fuelsystemstatus"] = 0;
-// doc["engineload"] = 0;
-// doc["enginecoolanttemp"] = 0;
-// doc["shorttermfueltrimbank_1"] = 0;
-// doc["longtermfueltrimbank_1"] = 0;
-// doc["shorttermfueltrimbank_2"] = 0;
-// doc["longtermfueltrimbank_2"] = 0;
-// doc["fuelpressure"] = 0;
-// doc["umanifoldpressure"] = 0;
-// doc["rpm"] = 0;
-// doc["kph"] = 0;
-// doc["mph"] = 0;
-
-doc["batteryvoltage"] = 0;
-doc["get_vin_blocking"] = 0;
-doc["usupportedpids_1_20"] = 0;
-doc["umonitorstatus"] = 0;
-doc["freezedtc"] = 0;
-doc["fuelsystemstatus"] = 0;
-doc["engineload"] = 0;
-doc["enginecoolanttemp"] = 0;
-doc["shorttermfueltrimbank_1"] = 0;
-doc["longtermfueltrimbank_1"] = 0;
-doc["shorttermfueltrimbank_2"] = 0;
-doc["longtermfueltrimbank_2"] = 0;
-
-
-char jsonBuffer[512];
-
-serializeJson(doc, jsonBuffer);
-
+  doc["batteryvoltage"] = batteryvoltage;
+  doc["get_vin_blocking"] = 0;
+  doc["usupportedpids_1_20"] = 0;
+  doc["umonitorstatus"] = 0;
+  doc["freezedtc"] = 0;
+  doc["fuelsystemstatus"] = 0;
+  doc["engineload"] = 0;
+  doc["enginecoolanttemp"] = 0;
+  doc["shorttermfueltrimbank_1"] = 0;
+  doc["longtermfueltrimbank_1"] = 0;
+  doc["shorttermfueltrimbank_2"] = 0;
+  doc["longtermfueltrimbank_2"] = 0;
+  doc["fuelpressure"] = 0;
+  doc["umanifoldpressure"] = 0;
+  doc["rpm"] = 0;
+  doc["kph"] = 0;
+  doc["mph"] = 0;
+  doc["timingadvance"] = 0;
+  doc["intakeairtemp"] = 0;
+  doc["mafrate"] = 0;
+  doc["throttle"] = 0;
+  doc["ucommandedsecairstatus"] = 0;
+  doc["uoxygensensorspresent_2banks"] = 0;
+  doc["uobdstandards"] = 0;
+  doc["uoxygensensorspresent_4banks"] = 0;
+  doc["auxinputstatus"] = false;
+  doc["runtime"] = 0;
+  doc["usupportedpids_21_40"] = 0;
+  doc["disttravelwithmil"] = 0;
+  doc["fuelrailpressure"] = 0;
+  doc["fuelrailguagepressure"] = 0;
+  doc["commandedegr"] = 0;
+  doc["egrerror"] = 0;
+  doc["commandedevappurge"] = 0;
+  doc["fuellevel"] = 0;
+  doc["uwarmupssincecodescleared"] = 0;
+  doc["distsincecodescleared"] = 0;
+  doc["evapsysvappressure"] = 0;
+  doc["uabsbaropressure"] = 0;
+  doc["cattempb1s1"] = 0;
+  doc["cattempb2s1"] = 0;
+  doc["cattempb1s2"] = 0;
+  doc["cattempb2s2"] = 0;
+  doc["usupportedpids_41_60"] = 0;
+  doc["umonitordrivecyclestatus"] = 0;
+  doc["ctrlmodvoltage"] = 0;
+  doc["absload"] = 0;
+  doc["commandedairfuelratio"] = 0;
+  doc["relativethrottle"] = 0;
+  doc["ambientairtemp"] = 0;
+  doc["absthrottleposb"] = 0;
+  doc["absthrottleposc"] = 0;
+  doc["absthrottleposd"] = 0;
+  doc["absthrottlepose"] = 0;
+  doc["absthrottleposf"] = 0;
+  doc["commandedthrottleactuator"] = 0;
+  doc["timerunwithmil"] = 0;
+  doc["timesincecodescleared"] = 0;
+  doc["maxmafrate"] = 0;
+  doc["ufueltype"] = 0;
+  doc["ethonolpercent"] = 0;
+  doc["absevapsysvappressure"] = 0;
+  doc["evapsysvappressure2"] = 0;
+  doc["absfuelrailpressure"] = 0;
+  doc["relativepedalpos"] = 0;
+  doc["hybridbatlife"] = 0;
+  doc["oiltemp"] = 0;
+  doc["fuelinjecttiming"] = 0;
+  doc["fuelrate"] = 0;
+  doc["uemissionrqmts"] = 0;
+  //  doc["usupportedpids_61_80"] = 0;
+  //  doc["demandedtorque"] = 0;
+  //  doc["torque"] = 0;
+  //  doc["referencetorque"] = 0;
+  //  doc["auxsupported"] = 0;
+  char jsonBuffer[1900];
+  serializeJson(doc, jsonBuffer);
   mqtt.publish(obdtopicSend, jsonBuffer);
 }
 
@@ -1813,10 +1745,6 @@ void setup()
   delay(6000);
 
   SerialMon.println("Initializing modem...");
-  digitalWrite(GSMRST, 0);
-  delay(100);
-  digitalWrite(GSMRST, 1);
-  delay(5000);
 
   //  modem.init();
 
@@ -1851,6 +1779,9 @@ void setup()
   if (!modem.gprsConnect(apn, gprsUser, gprsPass))
   {
     SerialMon.println(" fail");
+    digitalWrite(GSMRST, 0);
+    delay(10);
+    digitalWrite(GSMRST, 1);
     delay(10000);
     return;
   }
@@ -1863,7 +1794,7 @@ void setup()
 
   mqtt.setServer(broker, 1883);
   mqtt.setCallback(messageHandler);
-  mqtt.setBufferSize(512);
+  mqtt.setBufferSize(2048);
 }
 
 void loop()
@@ -1917,7 +1848,7 @@ void loop()
   }
 
   obdFunCall();
-  //publishMessage();
+  // publishMessage();
   obdpublishMessage();
   delay(100);
   if (!mqtt.connected())
@@ -1936,9 +1867,9 @@ void loop()
     delay(1000);
     return;
   }
-  else
-  {
-    mqtt.loop();
-  }
+  // else
+  // {
+  mqtt.loop();
+  // }
   // mqtt.loop();
 }
