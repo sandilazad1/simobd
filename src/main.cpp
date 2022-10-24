@@ -1677,7 +1677,7 @@ void obdpublishMessage()
 
     StaticJsonDocument<1500> doc;
 
-t     doc["get_vin_blocking"] = 0;
+    doc["get_vin_blocking"] = 0;
     doc["usupportedpids_1_20"] = 0;
     doc["umonitorstatus"] = 0;
     doc["freezedtc"] = 0;
