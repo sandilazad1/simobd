@@ -50,7 +50,8 @@
 
 // Set serial for AT commands (to the module)
 // Use Hardware Serial on Mega, Leonardo, Micro
-#define SerialAT Serial2
+#define SerialAT Serial1
+#define SerialGps Serial2
 
 // or Software Serial on Uno, Nano
 
@@ -93,6 +94,7 @@ const char wifiPass[] = "YourWiFiPass";
 // MQTT details
 const char *broker = "184.72.193.102";
 const char *obdtopicSend = "obd/866262037106043";
+const char *obdgpsSend = "gps/866262037106043";
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -100,6 +102,8 @@ const char *obdtopicSend = "obd/866262037106043";
 #include "ELMduino.h"
 #include <ArduinoJson.h>
 #include "obd.h"
+#include <TinyGPSPlus.h>
+static const uint32_t GPSBaud = 9600;
 
 // Just in case someone defined the wrong thing..
 #if TINY_GSM_USE_GPRS && not defined TINY_GSM_MODEM_HAS_GPRS
@@ -209,6 +213,12 @@ int check2 = 6;
 uint32_t previousMills = 0;
 const long intervalPUB = 20000;
 
+uint32_t gpsPreviousMills = 0;
+const long intervalGps = 10000;
+
+float lat = 0.0;
+float lng = 0.0;
+
 uint32_t lastReconnectAttempt = 0;
 
 const bool DEBUG = true;
@@ -218,6 +228,8 @@ const bool HALT_ON_FAIL = false;
 SoftwareSerial obdSerial;
 
 ELM327 myELM327;
+
+TinyGPSPlus gps;
 
 obd_pid_states obd_state = BATTERYVOLTAGE;
 
@@ -1911,21 +1923,58 @@ void dtcmyfun()
     }
 }
 
+char rxData[20];
+char rxIndex = 0;
+void getResponse(void)
+{
+    char inChar = 0;
+    // Keep reading characters until we get a carriage return
+    while (inChar != '\r')
+    {
+        // If a character comes in on the serial port, we need to act on it.
+        if (obdSerial.available() > 0)
+        {
+            // Start by checking if we've received the end of message character ('\r').
+            if (obdSerial.peek() == '\r')
+            {
+                // Clear the Serial buffer
+                inChar = obdSerial.read();
+                // Put the end of string character on our data string
+                rxData[rxIndex] = '\0';
+                // Reset the buffer index so that the next character goes back at the beginning of the string.
+                rxIndex = 0;
+            }
+            // If we didn't get the end of message character, just add the new character to the string.
+            else
+            {
+                // Get the new character from the Serial port.
+                inChar = obdSerial.read();
+                // Add the new character to the string, and increment the index variable.
+                rxData[rxIndex++] = inChar;
+            }
+        }
+    }
+}
+
+const char *dtcCheck = "dtc";
 void mqttCallback(char *topic, byte *payload, unsigned int len)
 {
-    SerialMon.print("Message arrived [");
-    SerialMon.print(topic);
-    SerialMon.print("]: ");
-    SerialMon.write(payload, len);
-    SerialMon.println();
-
-    // Only proceed if incoming message's topic matches
-    if (String(topic) == "dtc")
+    SerialMon.print("Message arrived");
+    StaticJsonDocument<200> doc;
+    deserializeJson(doc, payload);
+    const char *message = doc["message"];
+    Serial.println(message);
+    if (doc["message"] == "dtc")
     {
+        // dtcmyfun();
+        // SerialMon.println(dtc());
+        // mqtt.publish(obdtopicSend, "done");
 
-        dtcmyfun();
-        SerialMon.println(dtc());
-        mqtt.publish(obdtopicSend, "done");
+        myELM327.sendCommand_Blocking(SERVICE_03);
+
+        delay(2000);
+        // getResponse();
+        // getResponse();
     }
 }
 
@@ -1957,6 +2006,9 @@ void setup()
     SerialMon.begin(9600);
     delay(10);
     Serial.begin(9600);
+
+    SerialGps.begin(GPSBaud);
+
     obdSerial.begin(38400, SWSERIAL_8N1, MYPORT_RX, MYPORT_TX, false);
 
     Serial.println("Attempting to connect to ELM327...");
@@ -2066,10 +2118,39 @@ void obdFunCall()
     } while (1 == obdLoop());
 }
 
+void Gps()
+{
+
+    if (SerialGps.available() > 0)
+    {
+        gps.encode(SerialGps.read());
+        Serial.print("LAT=");
+        Serial.println(gps.location.lat(), 6);
+        Serial.print("LONG=");
+        Serial.println(gps.location.lng(), 6);
+        Serial.print("ALT=");
+        Serial.println(gps.altitude.meters());
+        lat = (float)gps.location.lat();
+        lng = (float)gps.location.lng();
+
+        StaticJsonDocument<200> doc;
+
+        doc["lat"] = lat;
+        doc["lng"] = lng;
+
+        char jsonBuffer[512];
+        serializeJson(doc, jsonBuffer);
+        mqtt.publish(obdgpsSend, jsonBuffer);
+    }
+}
+
 void loop()
 {
 
     uint32_t currentMills = millis();
+
+    uint32_t gpsCurrentMills = millis();
+
     // while (!obdLoop())
     // {
     //     if (check2 == 0)
@@ -2132,11 +2213,18 @@ void loop()
         return;
     }
 
-    if (currentMills - previousMills >= intervalPUB )
+    if (currentMills - previousMills >= intervalPUB)
     {
 
         previousMills = currentMills;
         obdpublishMessage();
+    }
+
+    if (gpsCurrentMills - gpsPreviousMills >= intervalGps)
+    {
+
+        gpsPreviousMills = gpsCurrentMills;
+        Gps();
     }
 
     // mqtt.publish(obdtopicSend, "hhhhhhhhhhhhh");
