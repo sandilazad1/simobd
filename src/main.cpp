@@ -1677,8 +1677,7 @@ void obdpublishMessage()
 
     StaticJsonDocument<1500> doc;
 
-    doc["batteryvoltage"] = batteryvoltage;
-    doc["get_vin_blocking"] = 0;
+t     doc["get_vin_blocking"] = 0;
     doc["usupportedpids_1_20"] = 0;
     doc["umonitorstatus"] = 0;
     doc["freezedtc"] = 0;
