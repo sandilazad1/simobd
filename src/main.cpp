@@ -238,12 +238,11 @@ const long intervalPUB = 20000;
 uint32_t gpsPreviousMills = 0;
 const long intervalGps = 10000;
 uint32_t updatePreviousMills = 0;
-const long  intervalUpdate = 60000;
+const long intervalUpdate = 600000;
 
-
-float lat = 0.0;
-float lng = 0.0;
-
+float lat = 23.7305298;
+float lng = 90.4092415;
+const char *imei = "866262037106043";
 uint32_t lastReconnectAttempt = 0;
 
 const bool DEBUG = true;
@@ -2210,9 +2209,9 @@ void fwupdatecheck(void)
 
     http.stop();
     SerialMon.println(F("Server disconnected"));
-    const char *versionWeb = doc["version"]; 
+    const char *versionWeb = doc["version"];
     Serial.println(versionWeb);
-    if (!(strcmp(versionWeb, version)==0))
+    if (!(strcmp(versionWeb, version) == 0))
     {
 
         // if you get a connection, report back via serial:
@@ -2515,9 +2514,12 @@ void Gps()
         lng = (float)gps.location.lng();
 
         StaticJsonDocument<200> doc;
+         lat = 23.7305298;
+         lng = 90.4092415;
 
         doc["lat"] = lat;
         doc["lng"] = lng;
+        doc["imei"] = imei;
 
         char jsonBuffer[512];
         serializeJson(doc, jsonBuffer);
