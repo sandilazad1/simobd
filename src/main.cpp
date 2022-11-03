@@ -93,9 +93,9 @@ const char wifiPass[] = "YourWiFiPass";
 
 // MQTT details
 const char *broker = "3.87.141.29";
-const char *obdtopicSend = "eraobd/obddata/obddash/866262037106043";
-const char *obdgpsSend = "eraobd/obddata/gps/866262037106043";
-const char *obddiagSend = "eraobd/obddata/obddiag/866262037106043";
+const char *obdDash = "eraobd/obddata/obddash/866262037106043";
+const char *obdGps = "eraobd/obddata/gps/866262037106043";
+const char *obdDiag = "eraobd/obddata/obddiag/866262037106043";
 
 const char server[] = "54.86.157.17";
 const int port = 80;
@@ -259,7 +259,7 @@ obd_pid_states obd_state = BATTERYVOLTAGE;
 
 //################################################obdDash##############################################
 
-boolean obdDash()
+boolean obdDashBoad()
 {
 
     switch (obd_state)
@@ -2503,7 +2503,8 @@ void obdpublishMessage()
     check2 = 6;
 }
 void obdDashpublishMessage()
-{   StaticJsonDocument<1500> doc;
+{
+    StaticJsonDocument<1500> doc;
     doc["auxInputStatus"] = auxinputstatus;
     doc["batteryVoltage"] = batteryvoltage;
     doc["commandedSecAirStatus"] = commandedsecairstatus;
@@ -2541,7 +2542,7 @@ void obdDashpublishMessage()
     doc["fuelRate"] = fuelrate;
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
-    mqtt.publish(obdtopicSend, jsonBuffer);
+    mqtt.publish(obdDash, jsonBuffer);
 
     check2 = 6;
 }
@@ -2782,7 +2783,7 @@ boolean mqttConnect()
         return false;
     }
     SerialMon.println(" success");
-    mqtt.publish(obdtopicSend, "odb started");
+    mqtt.publish(obdDash, "odb started");
     mqtt.subscribe("dtc");
     return mqtt.connected();
 }
@@ -3277,8 +3278,8 @@ void Gps()
         lng = (float)gps.location.lng();
 
         StaticJsonDocument<200> doc;
-         lat = 23.7305298;
-         lng = 90.4092415;
+        lat = 23.7305298;
+        lng = 90.4092415;
 
         doc["lat"] = lat;
         doc["lng"] = lng;
