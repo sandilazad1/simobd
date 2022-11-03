@@ -92,9 +92,13 @@ const char wifiSSID[] = "YourSSID";
 const char wifiPass[] = "YourWiFiPass";
 
 // MQTT details
-const char *broker = "184.72.193.102";
-const char *obdDash = "obd/866262037106043";
-const char *obdGps = "gps/866262037106043";
+const char *broker = "3.87.141.29";
+const char *obdtopicSend = "eraobd/obddata/obddash/866262037106043";
+const char *obdgpsSend = "eraobd/obddata/gps/866262037106043";
+const char *obddiagSend = "eraobd/obddata/obddiag/866262037106043";
+
+const char server[] = "54.86.157.17";
+const int port = 80;
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -103,6 +107,16 @@ const char *obdGps = "gps/866262037106043";
 #include <ArduinoJson.h>
 #include "obd.h"
 #include <TinyGPSPlus.h>
+#include <ArduinoHttpClient.h>
+#include <CRC32.h>
+#include "FS.h"
+#include "SPIFFS.h"
+#include <ArduinoJson.h>
+#include <Update.h>
+
+const char *version = "2.0";
+void updateFw(void);
+void fwupdatecheck(void);
 static const uint32_t GPSBaud = 9600;
 
 // Just in case someone defined the wrong thing..
@@ -124,13 +138,18 @@ static const uint32_t GPSBaud = 9600;
 StreamDebugger debugger(SerialAT, SerialMon);
 TinyGsm modem(debugger);
 #else
+
+#if !defined(TINY_GSM_RX_BUFFER)
+#define TINY_GSM_RX_BUFFER 650
+#endif
+
 TinyGsm modem(SerialAT);
 #endif
-TinyGsmClient client(modem);
+TinyGsmClient client(modem, 0);
 PubSubClient mqtt(client);
 
-#define LED_PIN 13
-int ledStatus = LOW;
+TinyGsmClient clientfoupdate(modem, 1);
+HttpClient http(clientfoupdate, server, port);
 
 float batteryvoltage = 0.0;
 int8_t get_vin_blocking = 0;
@@ -210,15 +229,20 @@ uint16_t auxsupported = 0;
 int check = 5;
 int check2 = 6;
 
+uint32_t knownCRC32 = 0x6f50d767;
+uint32_t knownFileSize = 1024; // In case server does not send it
+
 uint32_t previousMills = 0;
 const long intervalPUB = 20000;
 
 uint32_t gpsPreviousMills = 0;
 const long intervalGps = 10000;
+uint32_t updatePreviousMills = 0;
+const long intervalUpdate = 600000;
 
-float lat = 0.0;
-float lng = 0.0;
-
+float lat = 23.7305298;
+float lng = 90.4092415;
+const char *imei = "866262037106043";
 uint32_t lastReconnectAttempt = 0;
 
 const bool DEBUG = true;
@@ -2747,10 +2771,10 @@ boolean mqttConnect()
     SerialMon.print(broker);
 
     // Connect to MQTT Broker
-    boolean status = mqtt.connect("obd");
+    // boolean status = mqtt.connect("obd");
 
     // Or, if you want to authenticate MQTT:
-    // boolean status = mqtt.connect("GsmClientName", "mqtt_user", "mqtt_pass");
+    boolean status = mqtt.connect("obd", "eraobd", "EraObd@#@#");
 
     if (status == false)
     {
@@ -2763,15 +2787,371 @@ boolean mqttConnect()
     return mqtt.connected();
 }
 
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
+{
+    Serial.printf("Listing directory: %s\n", dirname);
+
+    File root = fs.open(dirname);
+    if (!root)
+    {
+        Serial.println("Failed to open directory");
+        return;
+    }
+    if (!root.isDirectory())
+    {
+        Serial.println("Not a directory");
+        return;
+    }
+
+    File file = root.openNextFile();
+    while (file)
+    {
+        if (file.isDirectory())
+        {
+            Serial.print("  DIR : ");
+            Serial.println(file.name());
+            if (levels)
+            {
+                listDir(fs, file.name(), levels - 1);
+            }
+        }
+        else
+        {
+            Serial.print("  FILE: ");
+            Serial.print(file.name());
+            Serial.print("  SIZE: ");
+            Serial.println(file.size());
+        }
+        file = root.openNextFile();
+    }
+}
+
+void performUpdate(Stream &updateSource, size_t updateSize)
+{
+    if (Update.begin(updateSize))
+    {
+        size_t written = Update.writeStream(updateSource);
+        if (written == updateSize)
+        {
+            Serial.println("Writes : " + String(written) + " successfully");
+        }
+        else
+        {
+            Serial.println("Written only : " + String(written) + "/" + String(updateSize) + ". Retry?");
+        }
+        if (Update.end())
+        {
+            Serial.println("OTA finished!");
+            if (Update.isFinished())
+            {
+                Serial.println("Restart ESP device!");
+                ESP.restart();
+            }
+            else
+            {
+                Serial.println("OTA not fiished");
+            }
+        }
+        else
+        {
+            Serial.println("Error occured #: " + String(Update.getError()));
+        }
+    }
+    else
+    {
+        Serial.println("Cannot beggin update");
+    }
+}
+
+void updateFromFS()
+{
+    File updateBin = SPIFFS.open("/update.bin");
+    if (updateBin)
+    {
+        if (updateBin.isDirectory())
+        {
+            Serial.println("Directory error");
+            updateBin.close();
+            return;
+        }
+
+        size_t updateSize = updateBin.size();
+
+        if (updateSize > 0)
+        {
+            Serial.println("Starting update");
+            performUpdate(updateBin, updateSize);
+        }
+        else
+        {
+            Serial.println("Error, archivo vacío");
+        }
+
+        updateBin.close();
+
+        // whe finished remove the binary from sd card to indicate end of the process
+        // fs.remove("/update.bin");
+    }
+    else
+    {
+        Serial.println("no such binary");
+    }
+}
+
+void printPercent(uint32_t readLength, uint32_t contentLength)
+{
+    // If we know the total length
+    if (contentLength != -1)
+    {
+        Serial.print("\r ");
+        Serial.print((100.0 * readLength) / contentLength);
+        Serial.print('%');
+    }
+    else
+    {
+        Serial.println(readLength);
+    }
+}
+
+void fwupdatecheck(void)
+{
+    mqtt.disconnect();
+    mqtt.flush();
+    SerialMon.print(F("Performing HTTP GET request... "));
+    int err = http.get("/obdfw/version.json");
+    if (err != 0)
+    {
+        SerialMon.println(F("failed to connect"));
+        delay(10000);
+        return;
+    }
+
+    int status = http.responseStatusCode();
+    SerialMon.print(F("Response status code: "));
+    SerialMon.println(status);
+    if (!status)
+    {
+        delay(10000);
+        return;
+    }
+
+    SerialMon.println(F("Response Headers:"));
+    while (http.headerAvailable())
+    {
+        String headerName = http.readHeaderName();
+        String headerValue = http.readHeaderValue();
+        SerialMon.println("    " + headerName + " : " + headerValue);
+    }
+
+    int length = http.contentLength();
+    if (length >= 0)
+    {
+        SerialMon.print(F("Content length is: "));
+        SerialMon.println(length);
+    }
+    if (http.isResponseChunked())
+    {
+        SerialMon.println(F("The response is chunked"));
+    }
+
+    String body = http.responseBody();
+    SerialMon.println(F("Response:"));
+    SerialMon.println(body);
+
+    SerialMon.print(F("Body length is: "));
+    SerialMon.println(body.length());
+
+    StaticJsonDocument<48> doc;
+    DeserializationError error = deserializeJson(doc, body);
+    if (error)
+    {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.c_str());
+        return;
+    }
+
+    http.stop();
+    SerialMon.println(F("Server disconnected"));
+    const char *versionWeb = doc["version"];
+    Serial.println(versionWeb);
+    if (!(strcmp(versionWeb, version) == 0))
+    {
+
+        // if you get a connection, report back via serial:
+        if (!clientfoupdate.connect(server, port))
+        {
+            Serial.println(" fail");
+            delay(10000);
+            return;
+        }
+        Serial.println(" OK");
+
+        // Make a HTTP request:
+        clientfoupdate.print(String("GET ") + "/obdfw/fw.bin" + " HTTP/1.0\r\n");
+        clientfoupdate.print(String("Host: ") + server + "\r\n");
+        clientfoupdate.print("Connection: close\r\n\r\n");
+
+        long timeout = millis();
+        while (clientfoupdate.available() == 0)
+        {
+            if (millis() - timeout > 10000L)
+            {
+                Serial.println(">>> Client Timeout !");
+                clientfoupdate.stop();
+                delay(10000L);
+                return;
+            }
+        }
+
+        Serial.println("Reading header");
+        uint32_t contentLength = knownFileSize;
+
+        File file = SPIFFS.open("/update.bin", FILE_APPEND);
+
+        while (clientfoupdate.available())
+        {
+            String line = clientfoupdate.readStringUntil('\n');
+            line.trim();
+            // Serial.println(line);    // Uncomment this to show response header
+            line.toLowerCase();
+            if (line.startsWith("content-length:"))
+            {
+                contentLength = line.substring(line.lastIndexOf(':') + 1).toInt();
+            }
+            else if (line.length() == 0)
+            {
+                break;
+            }
+        }
+
+        timeout = millis();
+        uint32_t readLength = 0;
+        CRC32 crc;
+
+        unsigned long timeElapsed = millis();
+        printPercent(readLength, contentLength);
+
+        while (readLength < contentLength && clientfoupdate.connected() && millis() - timeout < 10000L)
+        {
+            int i = 0;
+            while (clientfoupdate.available())
+            {
+                // read file data to spiffs
+                if (!file.print(char(clientfoupdate.read())))
+                {
+                    Serial.println("Appending file");
+                }
+                // Serial.print((char)c);       // Uncomment this to show data
+                // crc.update(c);
+                readLength++;
+
+                if (readLength % (contentLength / 13) == 0)
+                {
+                    printPercent(readLength, contentLength);
+                }
+                timeout = millis();
+            }
+        }
+
+        file.close();
+
+        printPercent(readLength, contentLength);
+        timeElapsed = millis() - timeElapsed;
+        Serial.println();
+
+        clientfoupdate.stop();
+        Serial.println("stop client");
+
+        modem.gprsDisconnect();
+        Serial.println("gprs disconnect");
+        Serial.println();
+
+        float duration = float(timeElapsed) / 1000;
+
+        updateFromFS();
+    }
+    delay(10000);
+}
+
+void appendFile(fs::FS &fs, const char *path, const char *message)
+{
+    Serial.printf("Appending to file: %s\n", path);
+
+    File file = fs.open(path, FILE_APPEND);
+    if (!file)
+    {
+        Serial.println("Failed to open file for appending");
+        return;
+    }
+    if (file.print(message))
+    {
+        Serial.println("APOK");
+    }
+    else
+    {
+        Serial.println("APX");
+    }
+}
+
+void readFile(fs::FS &fs, const char *path)
+{
+    Serial.printf("Reading file: %s\n", path);
+
+    File file = fs.open(path);
+    if (!file || file.isDirectory())
+    {
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    Serial.print("Read from file: ");
+    while (file.available())
+    {
+        Serial.write(file.read());
+        delayMicroseconds(100);
+    }
+}
+
+void writeFile(fs::FS &fs, const char *path, const char *message)
+{
+    Serial.printf("Writing file: %s\n", path);
+
+    File file = fs.open(path, FILE_WRITE);
+    if (!file)
+    {
+        Serial.println("Failed to open file for writing");
+        return;
+    }
+    if (file.print(message))
+    {
+        Serial.println("File written");
+    }
+    else
+    {
+        Serial.println("Write failed");
+    }
+}
+
+void deleteFile(fs::FS &fs, const char *path)
+{
+    Serial.printf("Deleting file: %s\n", path);
+    if (fs.remove(path))
+    {
+        Serial.println("File deleted");
+    }
+    else
+    {
+        Serial.println("Delete failed");
+    }
+}
+
 void setup()
 {
     // Set console baud rate
     SerialMon.begin(9600);
     delay(10);
     Serial.begin(9600);
-
     SerialGps.begin(GPSBaud);
-
     obdSerial.begin(38400, SWSERIAL_8N1, MYPORT_RX, MYPORT_TX, false);
 
     Serial.println("Attempting to connect to ELM327...");
@@ -2788,13 +3168,13 @@ void setup()
     Serial.println("Connected to ELM327");
     SerialMon.println("Wait...");
 
-    pinMode(LED_PIN, OUTPUT);
-
-    // !!!!!!!!!!!
-    // Set your reset, enable, power pins here
-    // !!!!!!!!!!!
-
-    SerialMon.println("Wait...");
+    if (!SPIFFS.begin(true))
+    {
+        Serial.println("SPIFFS Mount Failed");
+        return;
+    }
+    SPIFFS.format();
+    listDir(SPIFFS, "/", 0);
 
     // Set GSM module baud rate
     TinyGsmAutoBaud(SerialAT, GSM_AUTOBAUD_MIN, GSM_AUTOBAUD_MAX);
@@ -2897,9 +3277,12 @@ void Gps()
         lng = (float)gps.location.lng();
 
         StaticJsonDocument<200> doc;
+         lat = 23.7305298;
+         lng = 90.4092415;
 
         doc["lat"] = lat;
         doc["lng"] = lng;
+        doc["imei"] = imei;
 
         char jsonBuffer[512];
         serializeJson(doc, jsonBuffer);
@@ -2913,7 +3296,7 @@ void loop()
     uint32_t currentMills = millis();
 
     uint32_t gpsCurrentMills = millis();
-
+    uint32_t updateCurrentMills = millis();
     // while (!obdLoop())
     // {
     //     if (check2 == 0)
@@ -2990,8 +3373,12 @@ void loop()
         Gps();
     }
 
-    // mqtt.publish(obdtopicSend, "hhhhhhhhhhhhh");
-    // obdpublishMessage();
-    // delay(100);
+    if (updateCurrentMills - updatePreviousMills >= intervalUpdate)
+    {
+
+        updatePreviousMills = updateCurrentMills;
+        fwupdatecheck();
+    }
+
     mqtt.loop();
 }
