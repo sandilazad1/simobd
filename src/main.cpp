@@ -93,8 +93,8 @@ const char wifiPass[] = "YourWiFiPass";
 
 // MQTT details
 const char *broker = "184.72.193.102";
-const char *obdtopicSend = "obd/866262037106043";
-const char *obdgpsSend = "gps/866262037106043";
+const char *obdDash = "obd/866262037106043";
+const char *obdGps = "gps/866262037106043";
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -232,6 +232,727 @@ ELM327 myELM327;
 TinyGPSPlus gps;
 
 obd_pid_states obd_state = BATTERYVOLTAGE;
+
+//################################################obdDash##############################################
+
+boolean obdDash()
+{
+
+    switch (obd_state)
+    {
+        //########################################BATTERYVOLTAGE###########################
+
+    case BATTERYVOLTAGE:
+    {
+        batteryvoltage = myELM327.batteryVoltage();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("batteryvoltage: ");
+            Serial.println(batteryvoltage);
+            obd_state = MONITORSTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = MONITORSTATUS;
+        }
+
+        break;
+    }
+
+        //########################################MONITORSTATUS###########################
+
+    case MONITORSTATUS:
+    {
+        monitorstatus = myELM327.monitorStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("monitorstatus");
+            Serial.println(monitorstatus);
+            obd_state = FREEZEDTC;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FREEZEDTC;
+        }
+
+        break;
+    } //########################################FREEZEDTC###########################
+
+    case FREEZEDTC:
+    {
+        freezedtc = myELM327.freezeDTC();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("freezedtc: ");
+            Serial.println(freezedtc);
+            obd_state = FUELSYSTEMSTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FUELSYSTEMSTATUS;
+        }
+
+        break;
+    } //########################################FUELSYSTEMSTATUS###########################
+
+    case FUELSYSTEMSTATUS:
+    {
+        fuelsystemstatus = myELM327.fuelSystemStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("fuelsystemstatus: ");
+            Serial.println(fuelsystemstatus);
+            obd_state = ENGINELOAD;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = ENGINELOAD;
+        }
+
+        break;
+    } //########################################ENGINELOAD###########################
+
+    case ENGINELOAD:
+    {
+        engineload = myELM327.engineLoad();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("engineload: ");
+            Serial.println(engineload);
+            obd_state = ENGINECOOLANTTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = ENGINECOOLANTTEMP;
+        }
+
+        break;
+    } //########################################ENGINECOOLANTTEMP###########################
+
+    case ENGINECOOLANTTEMP:
+    {
+        enginecoolanttemp = myELM327.engineCoolantTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("enginecoolanttemp: ");
+            Serial.println(enginecoolanttemp);
+            obd_state = SHORTTERMFUELTRIMBANK_1;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = SHORTTERMFUELTRIMBANK_1;
+        }
+
+        break;
+    } //########################################SHORTTERMFUELTRIMBANK_1###########################
+
+    case SHORTTERMFUELTRIMBANK_1:
+    {
+        shorttermfueltrimbank_1 = myELM327.shortTermFuelTrimBank_1();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("shorttermfueltrimbank_1: ");
+            Serial.println(shorttermfueltrimbank_1);
+            obd_state = LONGTERMFUELTRIMBANK_1;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = LONGTERMFUELTRIMBANK_1;
+        }
+
+        break;
+    } //########################################LONGTERMFUELTRIMBANK_1###########################
+
+    case LONGTERMFUELTRIMBANK_1:
+    {
+        longtermfueltrimbank_1 = myELM327.longTermFuelTrimBank_1();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("supportedpids_1_20: ");
+            Serial.println(supportedpids_1_20);
+            obd_state = SHORTTERMFUELTRIMBANK_2;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = SHORTTERMFUELTRIMBANK_2;
+        }
+
+        break;
+    } //########################################SHORTTERMFUELTRIMBANK_2###########################
+
+    case SHORTTERMFUELTRIMBANK_2:
+    {
+        shorttermfueltrimbank_2 = myELM327.shortTermFuelTrimBank_2();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("supportedpids_1_20: ");
+            Serial.println(supportedpids_1_20);
+            obd_state = LONGTERMFUELTRIMBANK_2;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = LONGTERMFUELTRIMBANK_2;
+        }
+
+        break;
+    } //########################################LONGTERMFUELTRIMBANK_2###########################
+
+    case LONGTERMFUELTRIMBANK_2:
+    {
+        longtermfueltrimbank_2 = myELM327.longTermFuelTrimBank_2();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("longtermfueltrimbank_2: ");
+            Serial.println(longtermfueltrimbank_2);
+            obd_state = FUELPRESSURE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FUELPRESSURE;
+        }
+
+        break;
+    } //########################################FUELPRESSURE###########################
+
+    case FUELPRESSURE:
+    {
+        fuelpressure = myELM327.fuelPressure();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("fuelpressure: ");
+            Serial.println(fuelpressure);
+            obd_state = MANIFOLDPRESSURE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = MANIFOLDPRESSURE;
+        }
+
+        break;
+    } //########################################MANIFOLDPRESSURE###########################
+
+    case MANIFOLDPRESSURE:
+    {
+        manifoldpressure = myELM327.manifoldPressure();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("manifoldpressure: ");
+            Serial.println(manifoldpressure);
+            obd_state = RPM;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = RPM;
+        }
+
+        break;
+    } //########################################RPM###########################
+
+    case RPM:
+    {
+        rpm = myELM327.rpm();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("rpm: ");
+            Serial.println(rpm);
+            obd_state = KPH;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = KPH;
+        }
+
+        break;
+    } //########################################KPH###########################
+
+    case KPH:
+    {
+        kph = myELM327.kph();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("kph: ");
+            Serial.println(kph);
+            obd_state = MPH;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = MPH;
+        }
+
+        break;
+    } //########################################MPH###########################
+
+    case MPH:
+    {
+        mph = myELM327.mph();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("mph: ");
+            Serial.println(mph);
+            obd_state = TIMINGADVANCE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = TIMINGADVANCE;
+        }
+
+        break;
+    } //########################################TIMINGADVANCE###########################
+
+    case TIMINGADVANCE:
+    {
+        timingadvance = myELM327.timingAdvance();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("timingadvance: ");
+            Serial.println(timingadvance);
+            obd_state = INTAKEAIRTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = INTAKEAIRTEMP;
+        }
+
+        break;
+    } //########################################INTAKEAIRTEMP###########################
+
+    case INTAKEAIRTEMP:
+    {
+        intakeairtemp = myELM327.intakeAirTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("intakeairtemp: ");
+            Serial.println(intakeairtemp);
+            obd_state = MAFRATE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = MAFRATE;
+        }
+
+        break;
+    } //########################################MAFRATE###########################
+
+    case MAFRATE:
+    {
+        mafrate = myELM327.mafRate();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("mafrate: ");
+            Serial.println(mafrate);
+            obd_state = THROTTLE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = THROTTLE;
+        }
+
+        break;
+    }
+
+        //########################################THROTTLE###########################
+
+    case THROTTLE:
+    {
+        throttle = myELM327.throttle();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("throttle: ");
+            Serial.println(throttle);
+            obd_state = UCOMMANDEDSECAIRSTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = UCOMMANDEDSECAIRSTATUS;
+        }
+
+        break;
+
+        //########################################UCOMMANDEDSECAIRSTATUS###########################
+
+    case UCOMMANDEDSECAIRSTATUS:
+    {
+        commandedsecairstatus = myELM327.commandedSecAirStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("commandedsecairstatus: ");
+            Serial.println(commandedsecairstatus);
+            obd_state = UOXYGENSENSORSPRESENT_2BANKS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = UOXYGENSENSORSPRESENT_2BANKS;
+        }
+
+        break;
+    } //########################################UOXYGENSENSORSPRESENT_2BANKS###########################
+
+    case UOXYGENSENSORSPRESENT_2BANKS:
+    {
+        oxygensensorspresent_2banks = myELM327.oxygenSensorsPresent_2banks();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("oxygensensorspresent_2banks: ");
+            Serial.println(oxygensensorspresent_2banks);
+            obd_state = UOBDSTANDARDS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = UOBDSTANDARDS;
+        }
+
+        break;
+    } //########################################UOBDSTANDARDS###########################
+
+    case UOBDSTANDARDS:
+    {
+        obdstandards = myELM327.obdStandards();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("obdstandards: ");
+            Serial.println(obdstandards);
+            obd_state = UOXYGENSENSORSPRESENT_4BANKS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = UOXYGENSENSORSPRESENT_4BANKS;
+        }
+
+        break;
+    } //########################################UOXYGENSENSORSPRESENT_4BANKS###########################
+
+    case UOXYGENSENSORSPRESENT_4BANKS:
+    {
+        oxygensensorspresent_4banks = myELM327.oxygenSensorsPresent_4banks();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("oxygensensorspresent_4banks: ");
+            Serial.println(oxygensensorspresent_4banks);
+            obd_state = AUXINPUTSTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = AUXINPUTSTATUS;
+        }
+
+        break;
+    } //########################################AUXINPUTSTATUS###########################
+
+    case AUXINPUTSTATUS:
+    {
+        auxinputstatus = myELM327.auxInputStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("auxinputstatus: ");
+            Serial.println(auxinputstatus);
+            obd_state = RUNTIME;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = RUNTIME;
+        }
+
+        break;
+    } //########################################RUNTIME###########################
+
+    case RUNTIME:
+    {
+        runtime = myELM327.runTime();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("runtime: ");
+            Serial.println(runtime);
+            obd_state = DISTTRAVELWITHMIL;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = DISTTRAVELWITHMIL;
+        }
+
+        break;
+    }
+
+        //########################################DISTTRAVELWITHMIL###########################
+
+    case DISTTRAVELWITHMIL:
+    {
+        disttravelwithmil = myELM327.distTravelWithMIL();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("disttravelwithmil: ");
+            Serial.println(disttravelwithmil);
+            obd_state = FUELLEVEL;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FUELLEVEL;
+        }
+
+        break;
+    }
+
+        //########################################FUELLEVEL###########################
+
+    case FUELLEVEL:
+    {
+        fuellevel = myELM327.fuelLevel();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("fuellevel: ");
+            Serial.println(fuellevel);
+            obd_state = MONITORDRIVECYCLESTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = MONITORDRIVECYCLESTATUS;
+        }
+
+        break;
+    }
+        //########################################MONITORDRIVECYCLESTATUS###########################
+
+    case MONITORDRIVECYCLESTATUS:
+    {
+        monitordrivecyclestatus = myELM327.monitorDriveCycleStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("monitordrivecyclestatus: ");
+            Serial.println(monitordrivecyclestatus);
+            obd_state = ABSLOAD;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = ABSLOAD;
+        }
+
+        break;
+    }
+        //########################################ABSLOAD###########################
+
+    case ABSLOAD:
+    {
+        absload = myELM327.absLoad();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("absload: ");
+            Serial.println(absload);
+            obd_state = AMBIENTAIRTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = AMBIENTAIRTEMP;
+        }
+
+        break;
+    }
+        //########################################AMBIENTAIRTEMP###########################
+
+    case AMBIENTAIRTEMP:
+    {
+        ambientairtemp = myELM327.ambientAirTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("ambientairtemp: ");
+            Serial.println(ambientairtemp);
+            obd_state = ETHONOLPERCENT;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = ETHONOLPERCENT;
+        }
+
+        break;
+    }
+        //########################################ETHONOLPERCENT###########################
+
+    case ETHONOLPERCENT:
+    {
+        ethonolpercent = myELM327.ethonolPercent();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("ethonolpercent: ");
+            Serial.println(ethonolpercent);
+            obd_state = HYBRIDBATLIFE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = HYBRIDBATLIFE;
+        }
+
+        break;
+    }
+
+        //########################################HYBRIDBATLIFE###########################
+
+    case HYBRIDBATLIFE:
+    {
+        hybridbatlife = myELM327.hybridBatLife();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("hybridbatlife: ");
+            Serial.println(hybridbatlife);
+            obd_state = OILTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = OILTEMP;
+        }
+
+        break;
+    } //########################################OILTEMP###########################
+
+    case OILTEMP:
+    {
+        oiltemp = myELM327.oilTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("oiltemp: ");
+            Serial.println(oiltemp);
+            obd_state = FUELINJECTTIMING;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FUELINJECTTIMING;
+        }
+
+        break;
+    }
+
+        //########################################UABSBAROPRESSURE###########################
+
+    case FUELINJECTTIMING:
+    {
+        fuelinjecttiming = myELM327.fuelInjectTiming();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("fuelinjecttiming: ");
+            Serial.println(fuelinjecttiming);
+            obd_state = FUELRATE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = FUELRATE;
+        }
+
+        break;
+    }
+
+        //########################################FUELRATE###########################
+
+    case FUELRATE:
+    {
+        fuelrate = myELM327.fuelRate();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("fuelrate: ");
+            Serial.println(fuelrate);
+            obd_state = TORQUE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = TORQUE;
+        }
+
+        break;
+    }
+
+        //########################################TORQUE###########################
+
+    case TORQUE:
+    {
+        torque = myELM327.torque();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("torque: ");
+            Serial.println(torque);
+            obd_state = REFERENCETORQUE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            obd_state = REFERENCETORQUE;
+        }
+
+        break;
+    }
+    }
+    }
+
+    return 0;
+}
+
+//################################################obdloop##############################################
 
 boolean obdLoop()
 {
@@ -1753,6 +2474,49 @@ void obdpublishMessage()
     //  doc["auxsupported"] = 0;
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
+    mqtt.publish(obdDash, jsonBuffer);
+
+    check2 = 6;
+}
+void obdDashpublishMessage()
+{   StaticJsonDocument<1500> doc;
+    doc["auxInputStatus"] = auxinputstatus;
+    doc["batteryVoltage"] = batteryvoltage;
+    doc["commandedSecAirStatus"] = commandedsecairstatus;
+    doc["engineLoad"] = engineload;
+    doc["freezeDTC"] = freezedtc;
+    doc["fuelLevel"] = fuellevel;
+    doc["fuelPressure"] = fuelpressure;
+    doc["fuelSystemStatus"] = fuelsystemstatus;
+    doc["intakeAirTemp"] = intakeairtemp;
+    doc["kph"] = kph;
+    doc["longTermFuelTrimBank_1"] = longtermfueltrimbank_1;
+    doc["longTermFuelTrimBank_2"] = longtermfueltrimbank_2;
+    doc["mafRate"] = mafrate;
+    doc["manifoldPressure"] = fuelrailpressure;
+    doc["monitorStatus"] = monitorstatus;
+    doc["mph"] = mph;
+    doc["obdStandards"] = obdstandards;
+    doc["oxygenSensorsPresent_2banks"] = oxygensensorspresent_2banks;
+    doc["oxygenSensorsPresent_4banks"] = oxygensensorspresent_4banks;
+    doc["rpm"] = rpm;
+    doc["runTime"] = runtime;
+    doc["shorttermfueltrimbank_1"] = shorttermfueltrimbank_1;
+    doc["shorttermfueltrimbank_2"] = shorttermfueltrimbank_2;
+    doc["Temp"] = enginecoolanttemp;
+    doc["throttle"] = throttle;
+    doc["timingAdvance"] = timingadvance;
+    doc["distTravelwithmil"] = disttravelwithmil;
+    doc["absLoad"] = absload;
+    doc["ambientairTemp"] = ambientairtemp;
+    doc["fuelType"] = fueltype;
+    doc["ethonolPercent"] = ethonolpercent;
+    doc["hybridBatlife"] = hybridbatlife;
+    doc["oilTemp"] = oiltemp;
+    doc["fuelinJecttiming"] = fuelinjecttiming;
+    doc["fuelRate"] = fuelrate;
+    char jsonBuffer[1900];
+    serializeJson(doc, jsonBuffer);
     mqtt.publish(obdtopicSend, jsonBuffer);
 
     check2 = 6;
@@ -2139,7 +2903,7 @@ void Gps()
 
         char jsonBuffer[512];
         serializeJson(doc, jsonBuffer);
-        mqtt.publish(obdgpsSend, jsonBuffer);
+        mqtt.publish(obdGps, jsonBuffer);
     }
 }
 
