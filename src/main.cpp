@@ -92,12 +92,13 @@ const char wifiSSID[] = "YourSSID";
 const char wifiPass[] = "YourWiFiPass";
 
 // MQTT details
-const char *broker = "3.87.141.29";
+const char *broker = "50.19.50.166";
 const char *obdDash = "eraobd/obddata/obddash/866262037106043";
 const char *obdGps = "eraobd/obddata/gps/866262037106043";
 const char *obdDiag = "eraobd/obddata/obddiag/866262037106043";
+const char *obdDiagSub = "eraobd/obddata/obddiag/sub/866262037106043";
 
-const char server[] = "54.86.157.17";
+const char server[] = "52.73.212.48";
 const int port = 80;
 
 #include <TinyGsmClient.h>
@@ -228,6 +229,7 @@ uint16_t referencetorque = 0;
 uint16_t auxsupported = 0;
 int check = 5;
 int check2 = 6;
+int check3 = 7;
 
 uint32_t knownCRC32 = 0x6f50d767;
 uint32_t knownFileSize = 1024; // In case server does not send it
@@ -255,14 +257,12 @@ ELM327 myELM327;
 
 TinyGPSPlus gps;
 
-obd_pid_states obd_state = BATTERYVOLTAGE;
-
 //################################################obdDash##############################################
-
+obd_pid_states obd_Dash = BATTERYVOLTAGE;
 boolean obdDashBoad()
 {
 
-    switch (obd_state)
+    switch (obd_Dash)
     {
         //########################################BATTERYVOLTAGE###########################
 
@@ -274,12 +274,12 @@ boolean obdDashBoad()
         {
             Serial.print("batteryvoltage: ");
             Serial.println(batteryvoltage);
-            obd_state = MONITORSTATUS;
+            obd_Dash = MONITORSTATUS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = MONITORSTATUS;
+            obd_Dash = MONITORSTATUS;
         }
 
         break;
@@ -295,12 +295,12 @@ boolean obdDashBoad()
         {
             Serial.print("monitorstatus");
             Serial.println(monitorstatus);
-            obd_state = FREEZEDTC;
+            obd_Dash = FREEZEDTC;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FREEZEDTC;
+            obd_Dash = FREEZEDTC;
         }
 
         break;
@@ -314,12 +314,12 @@ boolean obdDashBoad()
         {
             Serial.print("freezedtc: ");
             Serial.println(freezedtc);
-            obd_state = FUELSYSTEMSTATUS;
+            obd_Dash = FUELSYSTEMSTATUS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FUELSYSTEMSTATUS;
+            obd_Dash = FUELSYSTEMSTATUS;
         }
 
         break;
@@ -333,12 +333,12 @@ boolean obdDashBoad()
         {
             Serial.print("fuelsystemstatus: ");
             Serial.println(fuelsystemstatus);
-            obd_state = ENGINELOAD;
+            obd_Dash = ENGINELOAD;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = ENGINELOAD;
+            obd_Dash = ENGINELOAD;
         }
 
         break;
@@ -352,12 +352,12 @@ boolean obdDashBoad()
         {
             Serial.print("engineload: ");
             Serial.println(engineload);
-            obd_state = ENGINECOOLANTTEMP;
+            obd_Dash = ENGINECOOLANTTEMP;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = ENGINECOOLANTTEMP;
+            obd_Dash = ENGINECOOLANTTEMP;
         }
 
         break;
@@ -371,12 +371,12 @@ boolean obdDashBoad()
         {
             Serial.print("enginecoolanttemp: ");
             Serial.println(enginecoolanttemp);
-            obd_state = SHORTTERMFUELTRIMBANK_1;
+            obd_Dash = SHORTTERMFUELTRIMBANK_1;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = SHORTTERMFUELTRIMBANK_1;
+            obd_Dash = SHORTTERMFUELTRIMBANK_1;
         }
 
         break;
@@ -390,12 +390,12 @@ boolean obdDashBoad()
         {
             Serial.print("shorttermfueltrimbank_1: ");
             Serial.println(shorttermfueltrimbank_1);
-            obd_state = LONGTERMFUELTRIMBANK_1;
+            obd_Dash = LONGTERMFUELTRIMBANK_1;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = LONGTERMFUELTRIMBANK_1;
+            obd_Dash = LONGTERMFUELTRIMBANK_1;
         }
 
         break;
@@ -409,12 +409,12 @@ boolean obdDashBoad()
         {
             Serial.print("supportedpids_1_20: ");
             Serial.println(supportedpids_1_20);
-            obd_state = SHORTTERMFUELTRIMBANK_2;
+            obd_Dash = SHORTTERMFUELTRIMBANK_2;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = SHORTTERMFUELTRIMBANK_2;
+            obd_Dash = SHORTTERMFUELTRIMBANK_2;
         }
 
         break;
@@ -428,12 +428,12 @@ boolean obdDashBoad()
         {
             Serial.print("supportedpids_1_20: ");
             Serial.println(supportedpids_1_20);
-            obd_state = LONGTERMFUELTRIMBANK_2;
+            obd_Dash = LONGTERMFUELTRIMBANK_2;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = LONGTERMFUELTRIMBANK_2;
+            obd_Dash = LONGTERMFUELTRIMBANK_2;
         }
 
         break;
@@ -447,12 +447,12 @@ boolean obdDashBoad()
         {
             Serial.print("longtermfueltrimbank_2: ");
             Serial.println(longtermfueltrimbank_2);
-            obd_state = FUELPRESSURE;
+            obd_Dash = FUELPRESSURE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FUELPRESSURE;
+            obd_Dash = FUELPRESSURE;
         }
 
         break;
@@ -466,12 +466,12 @@ boolean obdDashBoad()
         {
             Serial.print("fuelpressure: ");
             Serial.println(fuelpressure);
-            obd_state = MANIFOLDPRESSURE;
+            obd_Dash = MANIFOLDPRESSURE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = MANIFOLDPRESSURE;
+            obd_Dash = MANIFOLDPRESSURE;
         }
 
         break;
@@ -485,12 +485,12 @@ boolean obdDashBoad()
         {
             Serial.print("manifoldpressure: ");
             Serial.println(manifoldpressure);
-            obd_state = RPM;
+            obd_Dash = RPM;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = RPM;
+            obd_Dash = RPM;
         }
 
         break;
@@ -504,12 +504,12 @@ boolean obdDashBoad()
         {
             Serial.print("rpm: ");
             Serial.println(rpm);
-            obd_state = KPH;
+            obd_Dash = KPH;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = KPH;
+            obd_Dash = KPH;
         }
 
         break;
@@ -523,12 +523,12 @@ boolean obdDashBoad()
         {
             Serial.print("kph: ");
             Serial.println(kph);
-            obd_state = MPH;
+            obd_Dash = MPH;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = MPH;
+            obd_Dash = MPH;
         }
 
         break;
@@ -542,12 +542,12 @@ boolean obdDashBoad()
         {
             Serial.print("mph: ");
             Serial.println(mph);
-            obd_state = TIMINGADVANCE;
+            obd_Dash = TIMINGADVANCE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = TIMINGADVANCE;
+            obd_Dash = TIMINGADVANCE;
         }
 
         break;
@@ -561,12 +561,12 @@ boolean obdDashBoad()
         {
             Serial.print("timingadvance: ");
             Serial.println(timingadvance);
-            obd_state = INTAKEAIRTEMP;
+            obd_Dash = INTAKEAIRTEMP;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = INTAKEAIRTEMP;
+            obd_Dash = INTAKEAIRTEMP;
         }
 
         break;
@@ -580,12 +580,12 @@ boolean obdDashBoad()
         {
             Serial.print("intakeairtemp: ");
             Serial.println(intakeairtemp);
-            obd_state = MAFRATE;
+            obd_Dash = MAFRATE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = MAFRATE;
+            obd_Dash = MAFRATE;
         }
 
         break;
@@ -599,12 +599,12 @@ boolean obdDashBoad()
         {
             Serial.print("mafrate: ");
             Serial.println(mafrate);
-            obd_state = THROTTLE;
+            obd_Dash = THROTTLE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = THROTTLE;
+            obd_Dash = THROTTLE;
         }
 
         break;
@@ -620,12 +620,12 @@ boolean obdDashBoad()
         {
             Serial.print("throttle: ");
             Serial.println(throttle);
-            obd_state = UCOMMANDEDSECAIRSTATUS;
+            obd_Dash = UCOMMANDEDSECAIRSTATUS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = UCOMMANDEDSECAIRSTATUS;
+            obd_Dash = UCOMMANDEDSECAIRSTATUS;
         }
 
         break;
@@ -640,12 +640,12 @@ boolean obdDashBoad()
         {
             Serial.print("commandedsecairstatus: ");
             Serial.println(commandedsecairstatus);
-            obd_state = UOXYGENSENSORSPRESENT_2BANKS;
+            obd_Dash = UOXYGENSENSORSPRESENT_2BANKS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = UOXYGENSENSORSPRESENT_2BANKS;
+            obd_Dash = UOXYGENSENSORSPRESENT_2BANKS;
         }
 
         break;
@@ -659,12 +659,12 @@ boolean obdDashBoad()
         {
             Serial.print("oxygensensorspresent_2banks: ");
             Serial.println(oxygensensorspresent_2banks);
-            obd_state = UOBDSTANDARDS;
+            obd_Dash = UOBDSTANDARDS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = UOBDSTANDARDS;
+            obd_Dash = UOBDSTANDARDS;
         }
 
         break;
@@ -678,12 +678,12 @@ boolean obdDashBoad()
         {
             Serial.print("obdstandards: ");
             Serial.println(obdstandards);
-            obd_state = UOXYGENSENSORSPRESENT_4BANKS;
+            obd_Dash = UOXYGENSENSORSPRESENT_4BANKS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = UOXYGENSENSORSPRESENT_4BANKS;
+            obd_Dash = UOXYGENSENSORSPRESENT_4BANKS;
         }
 
         break;
@@ -697,12 +697,12 @@ boolean obdDashBoad()
         {
             Serial.print("oxygensensorspresent_4banks: ");
             Serial.println(oxygensensorspresent_4banks);
-            obd_state = AUXINPUTSTATUS;
+            obd_Dash = AUXINPUTSTATUS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = AUXINPUTSTATUS;
+            obd_Dash = AUXINPUTSTATUS;
         }
 
         break;
@@ -716,12 +716,12 @@ boolean obdDashBoad()
         {
             Serial.print("auxinputstatus: ");
             Serial.println(auxinputstatus);
-            obd_state = RUNTIME;
+            obd_Dash = RUNTIME;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = RUNTIME;
+            obd_Dash = RUNTIME;
         }
 
         break;
@@ -735,12 +735,12 @@ boolean obdDashBoad()
         {
             Serial.print("runtime: ");
             Serial.println(runtime);
-            obd_state = DISTTRAVELWITHMIL;
+            obd_Dash = DISTTRAVELWITHMIL;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = DISTTRAVELWITHMIL;
+            obd_Dash = DISTTRAVELWITHMIL;
         }
 
         break;
@@ -756,12 +756,12 @@ boolean obdDashBoad()
         {
             Serial.print("disttravelwithmil: ");
             Serial.println(disttravelwithmil);
-            obd_state = FUELLEVEL;
+            obd_Dash = FUELLEVEL;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FUELLEVEL;
+            obd_Dash = FUELLEVEL;
         }
 
         break;
@@ -777,12 +777,12 @@ boolean obdDashBoad()
         {
             Serial.print("fuellevel: ");
             Serial.println(fuellevel);
-            obd_state = MONITORDRIVECYCLESTATUS;
+            obd_Dash = MONITORDRIVECYCLESTATUS;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = MONITORDRIVECYCLESTATUS;
+            obd_Dash = MONITORDRIVECYCLESTATUS;
         }
 
         break;
@@ -797,12 +797,12 @@ boolean obdDashBoad()
         {
             Serial.print("monitordrivecyclestatus: ");
             Serial.println(monitordrivecyclestatus);
-            obd_state = ABSLOAD;
+            obd_Dash = ABSLOAD;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = ABSLOAD;
+            obd_Dash = ABSLOAD;
         }
 
         break;
@@ -817,12 +817,12 @@ boolean obdDashBoad()
         {
             Serial.print("absload: ");
             Serial.println(absload);
-            obd_state = AMBIENTAIRTEMP;
+            obd_Dash = AMBIENTAIRTEMP;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = AMBIENTAIRTEMP;
+            obd_Dash = AMBIENTAIRTEMP;
         }
 
         break;
@@ -837,12 +837,12 @@ boolean obdDashBoad()
         {
             Serial.print("ambientairtemp: ");
             Serial.println(ambientairtemp);
-            obd_state = ETHONOLPERCENT;
+            obd_Dash = ETHONOLPERCENT;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = ETHONOLPERCENT;
+            obd_Dash = ETHONOLPERCENT;
         }
 
         break;
@@ -857,12 +857,12 @@ boolean obdDashBoad()
         {
             Serial.print("ethonolpercent: ");
             Serial.println(ethonolpercent);
-            obd_state = HYBRIDBATLIFE;
+            obd_Dash = HYBRIDBATLIFE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = HYBRIDBATLIFE;
+            obd_Dash = HYBRIDBATLIFE;
         }
 
         break;
@@ -878,12 +878,12 @@ boolean obdDashBoad()
         {
             Serial.print("hybridbatlife: ");
             Serial.println(hybridbatlife);
-            obd_state = OILTEMP;
+            obd_Dash = OILTEMP;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = OILTEMP;
+            obd_Dash = OILTEMP;
         }
 
         break;
@@ -897,12 +897,12 @@ boolean obdDashBoad()
         {
             Serial.print("oiltemp: ");
             Serial.println(oiltemp);
-            obd_state = FUELINJECTTIMING;
+            obd_Dash = FUELINJECTTIMING;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FUELINJECTTIMING;
+            obd_Dash = FUELINJECTTIMING;
         }
 
         break;
@@ -918,12 +918,12 @@ boolean obdDashBoad()
         {
             Serial.print("fuelinjecttiming: ");
             Serial.println(fuelinjecttiming);
-            obd_state = FUELRATE;
+            obd_Dash = FUELRATE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = FUELRATE;
+            obd_Dash = FUELRATE;
         }
 
         break;
@@ -939,12 +939,12 @@ boolean obdDashBoad()
         {
             Serial.print("fuelrate: ");
             Serial.println(fuelrate);
-            obd_state = TORQUE;
+            obd_Dash = TORQUE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = TORQUE;
+            obd_Dash = TORQUE;
         }
 
         break;
@@ -960,14 +960,14 @@ boolean obdDashBoad()
         {
             Serial.print("torque: ");
             Serial.println(torque);
-            obd_state = REFERENCETORQUE;
+            obd_Dash = BATTERYVOLTAGE;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
             myELM327.printError();
-            obd_state = REFERENCETORQUE;
+            obd_Dash = BATTERYVOLTAGE;
         }
-
+        check3 = 0;
         break;
     }
     }
@@ -976,11 +976,10 @@ boolean obdDashBoad()
     return 0;
 }
 
-//################################################obdloop##############################################
-
-boolean obdLoop()
+//################################################obdDiag##############################################
+obd_pid_states obd_state = BATTERYVOLTAGE;
+boolean obdDiagBoad()
 {
-
     switch (obd_state)
     {
         //########################################BATTERYVOLTAGE###########################
@@ -2403,6 +2402,8 @@ boolean obdLoop()
             Serial.print("auxsupported: ");
             Serial.println(auxsupported);
             obd_state = BATTERYVOLTAGE;
+            check2 = 0;
+
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
@@ -2417,7 +2418,8 @@ boolean obdLoop()
     return 0;
 }
 
-void obdpublishMessage()
+void obdDiagpublishMessage()
+
 {
 
     StaticJsonDocument<1500> doc;
@@ -2491,20 +2493,17 @@ void obdpublishMessage()
     doc["fuelinjecttiming"] = 0;
     doc["fuelrate"] = 0;
     doc["uemissionrqmts"] = 0;
-    //  doc["usupportedpids_61_80"] = 0;
-    //  doc["demandedtorque"] = 0;
-    //  doc["torque"] = 0;
-    //  doc["referencetorque"] = 0;
-    //  doc["auxsupported"] = 0;
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
-    mqtt.publish(obdDash, jsonBuffer);
+    mqtt.publish(obdDiag, jsonBuffer);
 
     check2 = 6;
 }
+
 void obdDashpublishMessage()
 {
     StaticJsonDocument<1500> doc;
+    doc["imei"] = imei;
     doc["auxInputStatus"] = auxinputstatus;
     doc["batteryVoltage"] = batteryvoltage;
     doc["commandedSecAirStatus"] = commandedsecairstatus;
@@ -2534,7 +2533,6 @@ void obdDashpublishMessage()
     doc["distTravelwithmil"] = disttravelwithmil;
     doc["absLoad"] = absload;
     doc["ambientairTemp"] = ambientairtemp;
-    doc["fuelType"] = fueltype;
     doc["ethonolPercent"] = ethonolpercent;
     doc["hybridBatlife"] = hybridbatlife;
     doc["oilTemp"] = oiltemp;
@@ -2543,8 +2541,6 @@ void obdDashpublishMessage()
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
     mqtt.publish(obdDash, jsonBuffer);
-
-    check2 = 6;
 }
 
 obd_pid_states obd = BATTERYVOLTAGE;
@@ -2711,35 +2707,14 @@ void dtcmyfun()
     }
 }
 
-char rxData[20];
-char rxIndex = 0;
-void getResponse(void)
+void obdDiagBoadfun()
 {
-    char inChar = 0;
-    // Keep reading characters until we get a carriage return
-    while (inChar != '\r')
+    while (!obdDiagBoad())
     {
-        // If a character comes in on the serial port, we need to act on it.
-        if (obdSerial.available() > 0)
+        if (check2 == 0)
         {
-            // Start by checking if we've received the end of message character ('\r').
-            if (obdSerial.peek() == '\r')
-            {
-                // Clear the Serial buffer
-                inChar = obdSerial.read();
-                // Put the end of string character on our data string
-                rxData[rxIndex] = '\0';
-                // Reset the buffer index so that the next character goes back at the beginning of the string.
-                rxIndex = 0;
-            }
-            // If we didn't get the end of message character, just add the new character to the string.
-            else
-            {
-                // Get the new character from the Serial port.
-                inChar = obdSerial.read();
-                // Add the new character to the string, and increment the index variable.
-                rxData[rxIndex++] = inChar;
-            }
+            check2 = 74;
+            break;
         }
     }
 }
@@ -2766,6 +2741,23 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
     }
 }
 
+const char *obdDiagPub = "obddiag";
+void obdMqttCallback(char *topic, byte *payload, unsigned int len)
+{
+    SerialMon.print("obddiag arrived");
+    StaticJsonDocument<200> doc;
+    deserializeJson(doc, payload);
+    const char *message = doc["message"];
+    Serial.println(message);
+    if (doc["message"] == "obddiag")
+    {
+        obdDiagBoadfun();
+        obdDiagpublishMessage();
+        mqtt.publish(obdDiag, "done");
+        delay(2000);
+    }
+}
+
 boolean mqttConnect()
 {
     SerialMon.print("Connecting to ");
@@ -2785,6 +2777,7 @@ boolean mqttConnect()
     SerialMon.println(" success");
     mqtt.publish(obdDash, "odb started");
     mqtt.subscribe("dtc");
+    mqtt.subscribe(obdDiagSub);
     return mqtt.connected();
 }
 
@@ -3252,14 +3245,15 @@ void setup()
     // MQTT Broker setup
     mqtt.setServer(broker, 1883);
     mqtt.setCallback(mqttCallback);
+    mqtt.setCallback(obdMqttCallback);
     mqtt.setBufferSize(2048);
 }
 void obdFunCall()
 {
     do
     {
-        obdLoop();
-    } while (1 == obdLoop());
+        obdDashBoad();
+    } while (1 == obdDashBoad());
 }
 
 void Gps()
@@ -3364,7 +3358,7 @@ void loop()
     {
 
         previousMills = currentMills;
-        obdpublishMessage();
+        obdDashpublishMessage();
     }
 
     if (gpsCurrentMills - gpsPreviousMills >= intervalGps)
