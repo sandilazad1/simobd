@@ -4,10 +4,6 @@
 // const int TIMEOUT = 2000;
 // const bool HALT_ON_FAIL = false;
 
-
-
-
-
 typedef enum
 {
     BATTERYVOLTAGE,
@@ -85,7 +81,3 @@ typedef enum
     REFERENCETORQUE,
     AUXSUPPORTEDF,
 } obd_pid_states;
-
-
-
-

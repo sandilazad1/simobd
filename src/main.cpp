@@ -94,6 +94,7 @@ const char wifiPass[] = "YourWiFiPass";
 // MQTT details
 const char *broker = "50.19.50.166";
 const char *obdDash = "eraobd/obddata/obddash/866262037106043";
+const char *miniObdDash = "eraobd/obddata/miniobddash/866262037106043";
 const char *obdGps = "eraobd/obddata/gps/866262037106043";
 const char *obdDiag = "eraobd/obddata/obddiag/866262037106043";
 const char *obdDiagSub = "eraobd/obddata/obddiag/sub/866262037106043";
@@ -118,6 +119,8 @@ const int port = 80;
 const char *version = "2.0";
 void updateFw(void);
 void fwupdatecheck(void);
+void obdDiagpublishMessage();
+
 static const uint32_t GPSBaud = 9600;
 
 // Just in case someone defined the wrong thing..
@@ -227,22 +230,24 @@ uint8_t emissionrqmts = 0.0;
 uint32_t supportedpids_61_80 = 0;
 float demandedtorque = 0.0;
 float torque = 0.0;
+String DTCCODE = "";
 uint16_t referencetorque = 0;
 uint16_t auxsupported = 0;
 int check = 5;
 int check2 = 6;
 int check3 = 7;
-
+String read_dtc_();
 uint32_t knownCRC32 = 0x6f50d767;
 uint32_t knownFileSize = 1024; // In case server does not send it
 
 uint32_t previousMills = 0;
-const long intervalPUB = 30000;
-
+const long intervalPUB = 10000;
 uint32_t gpsPreviousMills = 0;
-const long intervalGps = 20000;
+const long intervalGps = 30000;
 uint32_t updatePreviousMills = 0;
-const long intervalUpdate = 600000;
+const long intervalUpdate = 1200000;
+uint32_t resetPreviousMills = 0;
+const long intervalreset =  3600000;
 
 float lat = 0.0;
 float lng = 0.0;
@@ -250,15 +255,316 @@ float speed = 0.0;
 const char *imei = "866262037106043";
 uint32_t lastReconnectAttempt = 0;
 
-const bool DEBUG = false;
+const bool DEBUG = true;
 const int TIMEOUT = 2000;
 const bool HALT_ON_FAIL = false;
+
+#define OBD_READY 0
+#define OBD_SEND 1
+#define OBD_READ 2
+
+#define READ_DTC__ 0
+#define FOUND_4_ 1
+#define FOUND_1 2
+#define FOUND_SPACE_ 3
+#define FOUND_0_ 4
+#define FOUND_1_ 5
+const String conversion_[16] = {"P0", "P1", "P2", "P3",
+                                "C0", "C1", "C2", "C3",
+                                "B0", "B1", "B2", "B3",
+                                "U0", "U1", "U2", "U3"};
+int OBD_state = 0;
+char inChar;
+String resp = "";
+unsigned long timeout_read = 0;
+unsigned long timeout_talk = 0;
+uint8_t num_ecu = 0;
+
+#define OBD_READ_TIMEOUT 1000 // ms
+#define OBD_TALK_TIMEOUT 2000 // ms
 
 SoftwareSerial obdSerial;
 
 ELM327 myELM327;
 
 TinyGPSPlus gps;
+//################################################miniObdDash##############################################
+obd_pid_states mini_bd_Dash = BATTERYVOLTAGE;
+boolean miniobdDashBoad()
+{
+
+    switch (mini_bd_Dash)
+    {
+        //########################################BATTERYVOLTAGE###########################
+
+    case BATTERYVOLTAGE:
+    {
+        batteryvoltage = myELM327.batteryVoltage();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("batteryvoltage: ");
+            Serial.println(batteryvoltage);
+            mini_bd_Dash = ENGINELOAD;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = ENGINELOAD;
+        }
+
+        break;
+    }
+
+    case ENGINELOAD:
+    {
+        engineload = myELM327.engineLoad();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("engineload: ");
+            Serial.println(engineload);
+            mini_bd_Dash = ENGINECOOLANTTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = ENGINECOOLANTTEMP;
+        }
+
+        break;
+    } //########################################ENGINECOOLANTTEMP###########################
+
+    case ENGINECOOLANTTEMP:
+    {
+        enginecoolanttemp = myELM327.engineCoolantTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("enginecoolanttemp: ");
+            Serial.println(enginecoolanttemp);
+            mini_bd_Dash = RPM;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = RPM;
+        }
+
+        break;
+    }
+        //########################################RPM###########################
+    case RPM:
+    {
+        rpm = myELM327.rpm();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("rpm: ");
+            Serial.println(rpm);
+            mini_bd_Dash = KPH;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = KPH;
+        }
+
+        break;
+    } //########################################KPH###########################
+
+    case KPH:
+    {
+        kph = myELM327.kph();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("kph: ");
+            Serial.println(kph);
+            mini_bd_Dash = TIMINGADVANCE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = TIMINGADVANCE;
+        }
+
+        break;
+    } //########################################MPH###########################
+
+    case TIMINGADVANCE:
+    {
+        timingadvance = myELM327.timingAdvance();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("timingadvance: ");
+            Serial.println(timingadvance);
+            mini_bd_Dash = INTAKEAIRTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = INTAKEAIRTEMP;
+        }
+
+        break;
+    } //########################################INTAKEAIRTEMP###########################
+
+    case INTAKEAIRTEMP:
+    {
+        intakeairtemp = myELM327.intakeAirTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("intakeairtemp: ");
+            Serial.println(intakeairtemp);
+            mini_bd_Dash = THROTTLE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = THROTTLE;
+        }
+
+        break;
+    }
+
+        //########################################THROTTLE###########################
+
+    case THROTTLE:
+    {
+        throttle = myELM327.throttle();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("throttle: ");
+            Serial.println(throttle);
+            mini_bd_Dash = AUXINPUTSTATUS;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = AUXINPUTSTATUS;
+        }
+
+        break;
+
+    case AUXINPUTSTATUS:
+    {
+        auxinputstatus = myELM327.auxInputStatus();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("auxinputstatus: ");
+            Serial.println(auxinputstatus);
+            mini_bd_Dash = RUNTIME;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = RUNTIME;
+        }
+
+        break;
+    } //########################################RUNTIME###########################
+
+    case RUNTIME:
+    {
+        runtime = myELM327.runTime();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("runtime: ");
+            Serial.println(runtime);
+            mini_bd_Dash = AMBIENTAIRTEMP;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = AMBIENTAIRTEMP;
+        }
+
+        break;
+    }
+
+    case AMBIENTAIRTEMP:
+    {
+        ambientairtemp = myELM327.ambientAirTemp();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("ambientairtemp: ");
+            Serial.println(ambientairtemp);
+            mini_bd_Dash = HYBRIDBATLIFE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = HYBRIDBATLIFE;
+        }
+
+        break;
+    }
+
+        //########################################HYBRIDBATLIFE###########################
+
+    case HYBRIDBATLIFE:
+    {
+        hybridbatlife = myELM327.hybridBatLife();
+
+        if (myELM327.nb_rx_state == ELM_SUCCESS)
+        {
+            Serial.print("hybridbatlife: ");
+            Serial.println(hybridbatlife);
+            mini_bd_Dash = TORQUE;
+        }
+        else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
+        {
+            myELM327.printError();
+            mini_bd_Dash = TORQUE;
+        }
+
+        break;
+    } //########################################OILTEMP###########################
+
+    case TORQUE:
+    {
+        DTCCODE = read_dtc_();
+
+        Serial.print("DTCCODE: ");
+        Serial.println(DTCCODE);
+        mini_bd_Dash = BATTERYVOLTAGE;
+
+        check3 = 0;
+        break;
+    }
+    }
+    }
+
+    return 0;
+}
+
+void miniobdDashpublishMessage()
+{
+    StaticJsonDocument<1500> doc;
+    doc["imei"] = imei;
+    doc["auxInputStatus"] = auxinputstatus;
+    doc["batteryVoltage"] = batteryvoltage;
+    doc["engineLoad"] = engineload;
+    doc["intakeAirTemp"] = intakeairtemp;
+    doc["kph"] = kph;
+    doc["rpm"] = rpm;
+    doc["runTime"] = runtime;
+    doc["Temp"] = enginecoolanttemp;
+    doc["throttle"] = throttle;
+    doc["ambientairTemp"] = ambientairtemp;
+    doc["hybridBatlife"] = hybridbatlife;
+    doc["dtc"] = DTCCODE;
+    char jsonBuffer[1900];
+    serializeJson(doc, jsonBuffer);
+    mqtt.publish(miniObdDash, jsonBuffer);
+}
 
 //################################################obdDash##############################################
 obd_pid_states obd_Dash = BATTERYVOLTAGE;
@@ -2448,10 +2754,13 @@ boolean obdDiagBoad()
             Serial.print("auxsupported: ");
             Serial.println(auxsupported);
             obd_state = BATTERYVOLTAGE;
+            obdDiagpublishMessage();
+
             check2 = 0;
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
+            obdDiagpublishMessage();
             obd_state = BATTERYVOLTAGE;
         }
         check2 = 0;
@@ -2540,7 +2849,7 @@ void obdDiagpublishMessage()
     doc["uemissionrqmts"] = 0;
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
-    mqtt.publish(obdDiag, jsonBuffer);
+    mqtt.publish(obdDiagSub, jsonBuffer);
 
     check2 = 6;
 }
@@ -2713,9 +3022,13 @@ void obdDiagBoadfun()
 {
     while (!obdDiagBoad())
     {
+        Serial.println(check2);
+
         if (check2 == 0)
         {
-            check2 = 74;
+            Serial.println(check2);
+
+            check2 = 75;
             break;
         }
     }
@@ -2754,8 +3067,7 @@ void obdMqttCallback(char *topic, byte *payload, unsigned int len)
     if (doc["message"] == "obddiag")
     {
         obdDiagBoadfun();
-        obdDiagpublishMessage();
-        mqtt.publish(obdDiag, "done");
+        mqtt.publish(obdDiagSub, "done");
         delay(2000);
     }
 }
@@ -2851,6 +3163,7 @@ void performUpdate(Stream &updateSource, size_t updateSize)
         else
         {
             Serial.println("Error occured #: " + String(Update.getError()));
+            ESP.restart();
         }
     }
     else
@@ -2990,7 +3303,7 @@ void fwupdatecheck(void)
         long timeout = millis();
         while (clientfoupdate.available() == 0)
         {
-            if (millis() - timeout > 10000L)
+            if (millis() - timeout > 60000L)
             {
                 Serial.println(">>> Client Timeout !");
                 clientfoupdate.stop();
@@ -3054,7 +3367,7 @@ void fwupdatecheck(void)
         printPercent(readLength, contentLength);
         timeElapsed = millis() - timeElapsed;
         Serial.println();
-
+        delay(5000);
         clientfoupdate.stop();
         Serial.println("stop client");
 
@@ -3259,7 +3572,19 @@ void obdFunCall()
     do
     {
         obdDashBoad();
-    } while (1 == obdDashBoad());
+    }
+
+    while (1 == obdDashBoad());
+}
+
+void obdminidash()
+{
+    do
+    {
+        miniobdDashBoad();
+    }
+
+    while (1 == miniobdDashBoad());
 }
 
 void Gps()
@@ -3281,7 +3606,7 @@ void Gps()
             lat = gps.location.lat();
             lng = gps.location.lng();
         }
-        if (gps.location.isUpdated())
+        if (gps.location.isUpdated() && gps.location.lat() && gps.location.lng())
         {
 
             doc["lat"] = lat;
@@ -3294,14 +3619,170 @@ void Gps()
     }
 }
 
+void OBD_talk(String cmd)
+{
+
+    bool data_received = false;
+    timeout_talk = millis();
+    resp = "";
+    do
+    {
+        switch (OBD_state)
+        {
+        case OBD_READY:
+            OBD_state = OBD_SEND;
+            break;
+        case OBD_SEND:
+            obdSerial.print(cmd + '\r');
+            timeout_read = millis();
+            OBD_state = OBD_READ;
+            break;
+        case OBD_READ:
+            do
+            {
+                if (obdSerial.available() > 0)
+                {
+                    inChar = char(obdSerial.read()); // Convert the byte into a char
+                    resp += inChar;                  // Add the read char to the response string
+                }
+                // The ELM327 finishes all its responses by the '>' char
+            } while (inChar != '>' && ((millis() - timeout_read) < OBD_READ_TIMEOUT));
+            if (inChar == '>')
+            {
+                OBD_state = OBD_READY;
+                data_received = true;
+                break;
+            }
+            else
+            {
+                OBD_state = OBD_SEND;
+            }
+            break;
+        default:
+            break;
+        }
+    } while (!data_received && ((millis() - timeout_talk) < OBD_TALK_TIMEOUT));
+}
+
+long *get_dtc_number()
+{
+    static long n_dtc[5] = {0, 0, 0, 0, 0};
+    uint8_t dtc_num_state = READ_DTC__;
+    uint16_t s_idx = 0;
+    num_ecu = 0;
+    do
+    {
+        switch (dtc_num_state)
+        {
+        case READ_DTC__:
+        {
+            if (resp[s_idx++] == '4')
+                dtc_num_state = FOUND_4_;
+            break;
+        }
+        case FOUND_4_:
+        {
+            if (resp[s_idx++] == '1')
+                dtc_num_state = FOUND_1;
+            else
+                dtc_num_state = READ_DTC__;
+            break;
+        }
+        case FOUND_1:
+        {
+            if (resp[s_idx++] == ' ')
+                dtc_num_state = FOUND_SPACE_;
+            else
+                dtc_num_state = READ_DTC__;
+            break;
+        }
+        case FOUND_SPACE_:
+        {
+            if (resp[s_idx++] == '0')
+                dtc_num_state = FOUND_0_;
+            else
+                dtc_num_state = READ_DTC__;
+            break;
+        }
+        case FOUND_0_:
+        {
+            if (resp[s_idx++] == '1')
+                dtc_num_state = FOUND_1_;
+            else
+                dtc_num_state = READ_DTC__;
+            break;
+        }
+        case FOUND_1_:
+        {
+            String s = resp.substring(s_idx + 1, s_idx + 3);
+            if ((s[0] - '0') >= 8)
+                n_dtc[num_ecu++] = strtol(s.c_str(), NULL, 16) - 128;
+            else
+                n_dtc[num_ecu++] = strtol(s.c_str(), NULL, 16);
+            dtc_num_state = READ_DTC__;
+            break;
+        }
+        }
+    } while (num_ecu < 5 && s_idx < resp.length());
+    return n_dtc;
+}
+
+void get_dtc_s(String &data, long n_dtc, uint8_t ecu_idx)
+{
+    uint8_t ecus = 0;
+    for (uint16_t i = 0; i < resp.length() - 1; i++)
+    { // Search for responses
+        if (resp[i] == '4' && resp[i + 1] == '3' && ecus++ == ecu_idx)
+        { // found desired response
+            for (long j = 0; j < n_dtc; j++)
+            { // Read all DTCs available for that specific ECU
+                // resp :: "43 01 33 00 00 00 00"
+                String sub = resp.substring(i + 3 + j * 6, i + 8 + j * 6);
+                // sub  :: "01 33"
+                if (isDigit(sub[0]))
+                    data += conversion_[sub[0] - '0'];
+                else
+                    data += conversion_[10 + (sub[0] - 'A')]; // If sub[0] == 'F' --> (sub[0]-'F')+10 == 15
+                data += sub[1];
+                data += sub[3];
+                data += sub[4];
+                data += ',';
+                // data :: "0P133,"
+            }
+        }
+    }
+}
+
+String read_dtc_()
+{
+    OBD_talk("0101"); // Request number of DTCs (Diagnostic Trouble Codes)
+    long *num_dtcs = get_dtc_number();
+    delay(50);              // OBD is slow and will need some time between commands
+    OBD_talk("03");         // Request actual DTCs
+    String dtc_string = ""; // String that'll be filled with DTCs in the format
+                            // "P0133,C2122, ..."
+    for (uint8_t i = 0; i < num_ecu; i++)
+    {
+        if (*(num_dtcs + i))
+        { // There exists TCs
+            get_dtc_s(dtc_string, *(num_dtcs + i), i);
+        }
+    }
+    return dtc_string;
+}
+
 void loop()
 {
 
     uint32_t currentMills = millis();
     uint32_t gpsCurrentMills = millis();
     uint32_t updateCurrentMills = millis();
+    uint32_t resetCurrentMills = millis();
 
-    obdFunCall();
+
+    // obdFunCall();
+
+    obdminidash();
 
     if (!modem.isNetworkConnected())
     {
@@ -3341,6 +3822,8 @@ void loop()
     if (!mqtt.connected())
     {
         SerialMon.println("=== MQTT NOT CONNECTED ===");
+        obd_state = BATTERYVOLTAGE;
+
         // Reconnect every 10 seconds
         uint32_t t = millis();
         if (t - lastReconnectAttempt > 10000L)
@@ -3355,11 +3838,24 @@ void loop()
         return;
     }
 
+    if (mqtt.connected())
+
+    {
+        if (check2 == 75)
+        {
+            Serial.println("check2check2check2check2check2check2check2check2");
+            Serial.println(check2);
+            obdDiagpublishMessage();
+            check2 = 6;
+        }
+    }
+
     if (currentMills - previousMills >= intervalPUB)
     {
 
         previousMills = currentMills;
-        obdDashpublishMessage();
+        // obdDashpublishMessage();
+        miniobdDashpublishMessage();
     }
 
     if (gpsCurrentMills - gpsPreviousMills >= intervalGps)
@@ -3374,6 +3870,14 @@ void loop()
 
         updatePreviousMills = updateCurrentMills;
         fwupdatecheck();
+    }
+
+    if (resetCurrentMills - resetPreviousMills >= intervalreset)
+    {
+        modem.restart();
+        ESP.restart();
+        
+        resetPreviousMills = resetCurrentMills;
     }
 
     mqtt.loop();
