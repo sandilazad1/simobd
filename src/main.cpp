@@ -140,9 +140,11 @@ StreamDebugger debugger(SerialAT, SerialMon);
 TinyGsm modem(debugger);
 #else
 
-#if !defined(TINY_GSM_RX_BUFFER)
-#define TINY_GSM_RX_BUFFER 650
-#endif
+// #if !defined(TINY_GSM_RX_BUFFER)
+// #define TINY_GSM_RX_BUFFER 650
+// #endif
+
+#define TINY_GSM_RX_BUFFER 1030
 
 TinyGsm modem(SerialAT);
 #endif
@@ -235,19 +237,20 @@ uint32_t knownCRC32 = 0x6f50d767;
 uint32_t knownFileSize = 1024; // In case server does not send it
 
 uint32_t previousMills = 0;
-const long intervalPUB = 20000;
+const long intervalPUB = 30000;
 
 uint32_t gpsPreviousMills = 0;
-const long intervalGps = 10000;
+const long intervalGps = 20000;
 uint32_t updatePreviousMills = 0;
 const long intervalUpdate = 600000;
 
-float lat = 23.7305298;
-float lng = 90.4092415;
+float lat = 0.0;
+float lng = 0.0;
+float speed = 0.0;
 const char *imei = "866262037106043";
 uint32_t lastReconnectAttempt = 0;
 
-const bool DEBUG = true;
+const bool DEBUG = false;
 const int TIMEOUT = 2000;
 const bool HALT_ON_FAIL = false;
 
@@ -974,6 +977,49 @@ boolean obdDashBoad()
     }
 
     return 0;
+}
+
+void obdDashpublishMessage()
+{
+    StaticJsonDocument<1500> doc;
+    doc["imei"] = imei;
+    doc["auxInputStatus"] = auxinputstatus;
+    doc["batteryVoltage"] = batteryvoltage;
+    doc["commandedSecAirStatus"] = commandedsecairstatus;
+    doc["engineLoad"] = engineload;
+    doc["freezeDTC"] = freezedtc;
+    doc["fuelLevel"] = fuellevel;
+    doc["fuelPressure"] = fuelpressure;
+    doc["fuelSystemStatus"] = fuelsystemstatus;
+    doc["intakeAirTemp"] = intakeairtemp;
+    doc["kph"] = kph;
+    doc["longTermFuelTrimBank_1"] = longtermfueltrimbank_1;
+    doc["longTermFuelTrimBank_2"] = longtermfueltrimbank_2;
+    doc["mafRate"] = mafrate;
+    doc["manifoldPressure"] = fuelrailpressure;
+    doc["monitorStatus"] = monitorstatus;
+    doc["mph"] = mph;
+    doc["obdStandards"] = obdstandards;
+    doc["oxygenSensorsPresent_2banks"] = oxygensensorspresent_2banks;
+    doc["oxygenSensorsPresent_4banks"] = oxygensensorspresent_4banks;
+    doc["rpm"] = rpm;
+    doc["runTime"] = runtime;
+    doc["shorttermfueltrimbank_1"] = shorttermfueltrimbank_1;
+    doc["shorttermfueltrimbank_2"] = shorttermfueltrimbank_2;
+    doc["Temp"] = enginecoolanttemp;
+    doc["throttle"] = throttle;
+    doc["timingAdvance"] = timingadvance;
+    doc["distTravelwithmil"] = disttravelwithmil;
+    doc["absLoad"] = absload;
+    doc["ambientairTemp"] = ambientairtemp;
+    doc["ethonolPercent"] = ethonolpercent;
+    doc["hybridBatlife"] = hybridbatlife;
+    doc["oilTemp"] = oiltemp;
+    doc["fuelinJecttiming"] = fuelinjecttiming;
+    doc["fuelRate"] = fuelrate;
+    char jsonBuffer[1900];
+    serializeJson(doc, jsonBuffer);
+    mqtt.publish(obdDash, jsonBuffer);
 }
 
 //################################################obdDiag##############################################
@@ -2403,7 +2449,6 @@ boolean obdDiagBoad()
             Serial.println(auxsupported);
             obd_state = BATTERYVOLTAGE;
             check2 = 0;
-
         }
         else if (myELM327.nb_rx_state != ELM_GETTING_MSG)
         {
@@ -2498,49 +2543,6 @@ void obdDiagpublishMessage()
     mqtt.publish(obdDiag, jsonBuffer);
 
     check2 = 6;
-}
-
-void obdDashpublishMessage()
-{
-    StaticJsonDocument<1500> doc;
-    doc["imei"] = imei;
-    doc["auxInputStatus"] = auxinputstatus;
-    doc["batteryVoltage"] = batteryvoltage;
-    doc["commandedSecAirStatus"] = commandedsecairstatus;
-    doc["engineLoad"] = engineload;
-    doc["freezeDTC"] = freezedtc;
-    doc["fuelLevel"] = fuellevel;
-    doc["fuelPressure"] = fuelpressure;
-    doc["fuelSystemStatus"] = fuelsystemstatus;
-    doc["intakeAirTemp"] = intakeairtemp;
-    doc["kph"] = kph;
-    doc["longTermFuelTrimBank_1"] = longtermfueltrimbank_1;
-    doc["longTermFuelTrimBank_2"] = longtermfueltrimbank_2;
-    doc["mafRate"] = mafrate;
-    doc["manifoldPressure"] = fuelrailpressure;
-    doc["monitorStatus"] = monitorstatus;
-    doc["mph"] = mph;
-    doc["obdStandards"] = obdstandards;
-    doc["oxygenSensorsPresent_2banks"] = oxygensensorspresent_2banks;
-    doc["oxygenSensorsPresent_4banks"] = oxygensensorspresent_4banks;
-    doc["rpm"] = rpm;
-    doc["runTime"] = runtime;
-    doc["shorttermfueltrimbank_1"] = shorttermfueltrimbank_1;
-    doc["shorttermfueltrimbank_2"] = shorttermfueltrimbank_2;
-    doc["Temp"] = enginecoolanttemp;
-    doc["throttle"] = throttle;
-    doc["timingAdvance"] = timingadvance;
-    doc["distTravelwithmil"] = disttravelwithmil;
-    doc["absLoad"] = absload;
-    doc["ambientairTemp"] = ambientairtemp;
-    doc["ethonolPercent"] = ethonolpercent;
-    doc["hybridBatlife"] = hybridbatlife;
-    doc["oilTemp"] = oiltemp;
-    doc["fuelinJecttiming"] = fuelinjecttiming;
-    doc["fuelRate"] = fuelrate;
-    char jsonBuffer[1900];
-    serializeJson(doc, jsonBuffer);
-    mqtt.publish(obdDash, jsonBuffer);
 }
 
 obd_pid_states obd = BATTERYVOLTAGE;
@@ -3063,8 +3065,12 @@ void fwupdatecheck(void)
         float duration = float(timeElapsed) / 1000;
 
         updateFromFS();
+        // Do nothing forevermore
+        while (true)
+        {
+            delay(1000);
+        }
     }
-    delay(10000);
 }
 
 void appendFile(fs::FS &fs, const char *path, const char *message)
@@ -3261,27 +3267,30 @@ void Gps()
 
     if (SerialGps.available() > 0)
     {
-        gps.encode(SerialGps.read());
-        Serial.print("LAT=");
-        Serial.println(gps.location.lat(), 6);
-        Serial.print("LONG=");
-        Serial.println(gps.location.lng(), 6);
-        Serial.print("ALT=");
-        Serial.println(gps.altitude.meters());
-        lat = (float)gps.location.lat();
-        lng = (float)gps.location.lng();
-
         StaticJsonDocument<200> doc;
-        lat = 23.7305298;
-        lng = 90.4092415;
+        for (int i = 0; i < 200; i++)
+        {
 
-        doc["lat"] = lat;
-        doc["lng"] = lng;
-        doc["imei"] = imei;
+            gps.encode(SerialGps.read());
+            // Serial.print("LAT=");
+            // Serial.println(gps.location.lat(), 6);
+            // Serial.print("LONG=");
+            // Serial.println(gps.location.lng(), 6);
+            // Serial.print("ALT=");
+            // Serial.println(gps.altitude.meters());
+            lat = gps.location.lat();
+            lng = gps.location.lng();
+        }
+        if (gps.location.isUpdated())
+        {
 
-        char jsonBuffer[512];
-        serializeJson(doc, jsonBuffer);
-        mqtt.publish(obdGps, jsonBuffer);
+            doc["lat"] = lat;
+            doc["lng"] = lng;
+            doc["imei"] = imei;
+            char jsonBuffer[512];
+            serializeJson(doc, jsonBuffer);
+            mqtt.publish(obdGps, jsonBuffer);
+        }
     }
 }
 
@@ -3289,19 +3298,11 @@ void loop()
 {
 
     uint32_t currentMills = millis();
-
     uint32_t gpsCurrentMills = millis();
     uint32_t updateCurrentMills = millis();
-    // while (!obdLoop())
-    // {
-    //     if (check2 == 0)
-    //     {
-    //         break;
-    //     }
-    // }
+
     obdFunCall();
 
-    // Make sure we're still registered on the network
     if (!modem.isNetworkConnected())
     {
         SerialMon.println("Network disconnected");
