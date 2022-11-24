@@ -116,7 +116,10 @@ const int port = 80;
 #include <ArduinoJson.h>
 #include <Update.h>
 
-const char *version = "2.0";
+#include <esp_task_wdt.h>
+#define WDT_TIMEOUT 3600
+
+const char *version = "3.0";
 void updateFw(void);
 void fwupdatecheck(void);
 void obdDiagpublishMessage();
@@ -241,13 +244,15 @@ uint32_t knownCRC32 = 0x6f50d767;
 uint32_t knownFileSize = 1024; // In case server does not send it
 
 uint32_t previousMills = 0;
-const long intervalPUB = 10000;
+const long intervalPUB = 5000;
 uint32_t gpsPreviousMills = 0;
 const long intervalGps = 30000;
 uint32_t updatePreviousMills = 0;
 const long intervalUpdate = 1200000;
 uint32_t resetPreviousMills = 0;
-const long intervalreset =  3600000;
+const long intervalreset = 30000; // 3600000;
+
+int iCheckReset = 0;
 
 float lat = 0.0;
 float lng = 0.0;
@@ -537,6 +542,7 @@ boolean miniobdDashBoad()
         mini_bd_Dash = BATTERYVOLTAGE;
 
         check3 = 0;
+        delay(2000);
         break;
     }
     }
@@ -561,6 +567,8 @@ void miniobdDashpublishMessage()
     doc["ambientairTemp"] = ambientairtemp;
     doc["hybridBatlife"] = hybridbatlife;
     doc["dtc"] = DTCCODE;
+    doc["version"] = version;
+
     char jsonBuffer[1900];
     serializeJson(doc, jsonBuffer);
     mqtt.publish(miniObdDash, jsonBuffer);
@@ -3081,7 +3089,7 @@ boolean mqttConnect()
     // boolean status = mqtt.connect("obd");
 
     // Or, if you want to authenticate MQTT:
-    boolean status = mqtt.connect("obd", "eraobd", "EraObd@#@#");
+    boolean status = mqtt.connect("obd1", "eraobd", "EraObd@#@#");
 
     if (status == false)
     {
@@ -3464,6 +3472,10 @@ void setup()
     SerialMon.begin(9600);
     delay(10);
     Serial.begin(9600);
+    Serial.println("Configuring WDT...");
+    esp_task_wdt_init(WDT_TIMEOUT, true); // enable panic so ESP32 restarts
+    esp_task_wdt_add(NULL);               // add current thread to WDT watch
+
     SerialGps.begin(GPSBaud);
     obdSerial.begin(38400, SWSERIAL_8N1, MYPORT_RX, MYPORT_TX, false);
 
@@ -3589,33 +3601,35 @@ void obdminidash()
 
 void Gps()
 {
-
-    if (SerialGps.available() > 0)
+    bool checkGps = false;
+    StaticJsonDocument<200> doc;
+    for (int i = 0; i < 200; i++)
     {
-        StaticJsonDocument<200> doc;
-        for (int i = 0; i < 200; i++)
-        {
 
+        if (SerialGps.available() > 0)
+        {
             gps.encode(SerialGps.read());
             // Serial.print("LAT=");
-            // Serial.println(gps.location.lat(), 6);
+            Serial.println(gps.location.lat(), 6);
             // Serial.print("LONG=");
-            // Serial.println(gps.location.lng(), 6);
+            Serial.println(gps.location.lng(), 6);
             // Serial.print("ALT=");
             // Serial.println(gps.altitude.meters());
             lat = gps.location.lat();
             lng = gps.location.lng();
+            // checkGps = gps.location.isUpdated();
         }
-        if (gps.location.isUpdated() && gps.location.lat() && gps.location.lng())
-        {
+    }
 
-            doc["lat"] = lat;
-            doc["lng"] = lng;
-            doc["imei"] = imei;
-            char jsonBuffer[512];
-            serializeJson(doc, jsonBuffer);
-            mqtt.publish(obdGps, jsonBuffer);
-        }
+    if (lat && lat)
+    {
+
+        doc["lat"] = lat;
+        doc["lng"] = lng;
+        doc["imei"] = imei;
+        char jsonBuffer[512];
+        serializeJson(doc, jsonBuffer);
+        mqtt.publish(obdGps, jsonBuffer);
     }
 }
 
@@ -3779,7 +3793,6 @@ void loop()
     uint32_t updateCurrentMills = millis();
     uint32_t resetCurrentMills = millis();
 
-
     // obdFunCall();
 
     obdminidash();
@@ -3826,13 +3839,27 @@ void loop()
 
         // Reconnect every 10 seconds
         uint32_t t = millis();
-        if (t - lastReconnectAttempt > 10000L)
+        if (t - lastReconnectAttempt > 10000L && iCheckReset < 10)
         {
+
+            if (iCheckReset == 9)
+            {
+                Serial.println("Resetting WDT...");
+                esp_task_wdt_reset();
+                delay(10000);
+                modem.restart();
+                delay(1000);
+                ESP.restart();
+            }
+
             lastReconnectAttempt = t;
             if (mqttConnect())
             {
                 lastReconnectAttempt = 0;
+                iCheckReset = 0;
             }
+            Serial.print(iCheckReset);
+            iCheckReset++;
         }
         delay(100);
         return;
@@ -3872,13 +3899,16 @@ void loop()
         fwupdatecheck();
     }
 
-    if (resetCurrentMills - resetPreviousMills >= intervalreset)
-    {
-        modem.restart();
-        ESP.restart();
-        
-        resetPreviousMills = resetCurrentMills;
-    }
+    // if (resetCurrentMills - resetPreviousMills >= intervalreset)
+    // {
+    //     mqtt.publish(obdDiagSub, "restart");
+    //     delay(10000);
+    //     modem.restart();
+    //     delay(1000);
+    //     ESP.restart();
+
+    //     resetPreviousMills = resetCurrentMills;
+    // }
 
     mqtt.loop();
 }
